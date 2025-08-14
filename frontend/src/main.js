@@ -1,5 +1,16 @@
 import './style.css'
 
+// Simple template loader with caching
+const templateCache = new Map();
+async function loadTemplate(path) {
+  if (templateCache.has(path)) return templateCache.get(path);
+  const res = await fetch(path);
+  if (!res.ok) throw new Error(`Failed to load template ${path}`);
+  const html = await res.text();
+  templateCache.set(path, html);
+  return html;
+}
+
 // Simple client-side router
 function router() {
   const path = window.location.pathname;
@@ -29,78 +40,23 @@ function router() {
 
 // Render character list table
 async function renderCharacterList(container) {
-  container.innerHTML = `
-    <h2>Characters</h2>
-    <table id="characters-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Race</th>
-          <th>Class</th>
-          <th>Level</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  `;
+  container.innerHTML = await loadTemplate('/src/templates/characters.html');
   await fetchCharacters();
 }
 
 // Render actions list table
 async function renderActionsList(container) {
-  container.innerHTML = `
-    <h2>Actions</h2>
-    <table id="actions-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Source</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  `;
+  container.innerHTML = await loadTemplate('/src/templates/actions.html');
   await fetchActions();
 }
 
 async function renderBackgroundsList(container) {
-  container.innerHTML = `
-    <h2>Backgrounds</h2>
-    <table id="backgrounds-table">
-      <thead>
-        <tr>
-          <th>Name</th>
-          <th>Source</th>
-        </tr>
-      </thead>
-      <tbody></tbody>
-    </table>
-  `;
+  container.innerHTML = await loadTemplate('/src/templates/backgrounds.html');
   await fetchBackgrounds();
 }
 
 async function renderSearchCategoryList(container) {
-  container.innerHTML = `
-    <h2>Search Categories</h2>
-    <ul>
-      <li><a href="/search/actions" data-link>Actions</a></li>
-      <li><a href="/search/backgrounds" data-link>Backgrounds</a></li>
-      <li><a href="/search/bestiary" data-link>Bestiary</a></li>
-      <li><a href="/search/classes" data-link>Classes</a></li>
-      <li><a href="/search/conditions" data-link>Conditions</a></li>
-      <li><a href="/search/feats" data-link>Feats</a></li>
-      <li><a href="/search/items" data-link>Items</a></li>
-      <li><a href="/search/items-base" data-link>Base Items</a></li>
-      <li><a href="/search/languages" data-link>Languages</a></li>
-      <li><a href="/search/magicvariants" data-link>Magic Variants</a></li>
-      <li><a href="/search/objects" data-link>Objects</a></li>
-      <li><a href="/search/optionalfeatures" data-link>Optional Features</a></li>
-      <li><a href="/search/races" data-link>Races</a></li>
-      <li><a href="/search/senses" data-link>Senses</a></li>
-      <li><a href="/search/skills" data-link>Skills</a></li>
-      <li><a href="/search/spells" data-link>Spells</a></li>
-    </ul>
-  `;
+  container.innerHTML = await loadTemplate('/src/templates/search-categories.html');
 }
 
 // Fetch and display characters
@@ -227,18 +183,16 @@ async function renderActionDetail(container) {
     const item = await res.json();
     const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
     const el = document.getElementById('action-detail');
-    // Render all fields we know about, and dump the rest for now
-    el.innerHTML = `
-      <div class="card">
-        <h3>${item.name ?? ''}</h3>        
-        <p><strong>Time:</strong> ${escapeHtml(formatTime(item.time)) || '—'}</p>
-        <section>
-          <h4>Description</h4>
-          ${renderEntries(item.entries ?? item.desc ?? item.description ?? []) || '<em>No description</em>'}
-        </section>
-        <p><strong>Source:</strong> ${displaySource}${item.page != null ? ` p.${item.page}` : ''}</p>
-      </div>
-    `;
+
+    // Load detail card template and replace tokens
+    const tpl = await loadTemplate('/src/templates/action-detail.html');
+    const html = tpl
+      .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+      .replace('{{TIME}}', escapeHtml(formatTime(item.time)) || '—')
+      .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? item.desc ?? item.description ?? []) || '<em>No description</em>')
+      .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+    el.innerHTML = html;
+
   } catch (e) {
     console.error('Error loading action:', e);
     const el = document.getElementById('action-detail');
@@ -258,18 +212,16 @@ async function renderBackgroundDetail(container) {
     const item = await res.json();
     const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
     const el = document.getElementById('background-detail');
-    // Render all fields we know about, and dump the rest for now
-    el.innerHTML = `
-      <div class="card">
-        <h3>${item.name ?? ''}</h3>        
-        <p><strong>Time:</strong> ${escapeHtml(formatTime(item.time)) || '—'}</p>
-        <section>
-          <h4>Description</h4>
-          ${renderEntries(item.entries ?? item.desc ?? item.description ?? []) || '<em>No description</em>'}
-        </section>
-        <p><strong>Source:</strong> ${displaySource}${item.page != null ? ` p.${item.page}` : ''}</p>
-      </div>
-    `;
+
+    // Load background detail card template and replace tokens
+    const tpl = await loadTemplate('/src/templates/background-detail.html');
+    const html = tpl
+      .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+      .replace('{{TIME}}', escapeHtml(formatTime(item.time)) || '—')
+      .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? item.desc ?? item.description ?? []) || '<em>No description</em>')
+      .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+    el.innerHTML = html;
+    
   } catch (e) {
     console.error('Error loading background:', e);
     const el = document.getElementById('background-detail');
