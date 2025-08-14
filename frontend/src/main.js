@@ -189,7 +189,7 @@ async function renderActionDetail(container) {
     const html = tpl
       .replace('{{NAME}}', escapeHtml(item.name ?? ''))
       .replace('{{TIME}}', escapeHtml(formatTime(item.time)) || '—')
-      .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? item.desc ?? item.description ?? []) || '<em>No description</em>')
+      .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
       .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
     el.innerHTML = html;
 
@@ -217,11 +217,10 @@ async function renderBackgroundDetail(container) {
     const tpl = await loadTemplate('/src/templates/background-detail.html');
     const html = tpl
       .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-      .replace('{{TIME}}', escapeHtml(formatTime(item.time)) || '—')
-      .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? item.desc ?? item.description ?? []) || '<em>No description</em>')
+      .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
       .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
     el.innerHTML = html;
-    
+
   } catch (e) {
     console.error('Error loading background:', e);
     const el = document.getElementById('background-detail');
@@ -289,7 +288,16 @@ function renderEntries(entries) {
 
     // List type
     if (it.type === 'list' && Array.isArray(it.items)) {
-      return `<ul>${it.items.map(li => `<li>${escapeHtml(typeof li === 'string' ? li : (li?.entry ?? li?.name ?? JSON.stringify(li)))}</li>`).join('')}</ul>`;
+      return `<ul class="entry-list">${it.items.map(li => {
+        if (typeof li === 'string') return `<li>${escapeHtml(li)}</li>`;
+        if (!li || typeof li !== 'object') return '';
+        const hasName = !!li.name;
+        const hasEntry = li.entry != null && li.entry !== '';
+        const nameHtml = hasName ? `<strong>${escapeHtml(li.name)}</strong>` : '';
+        const entryHtml = hasEntry ? escapeHtml(typeof li.entry === 'string' ? li.entry : JSON.stringify(li.entry)) : '';
+        const combined = hasName && hasEntry ? `${nameHtml} ${entryHtml}` : (nameHtml || entryHtml || '');
+        return `<li>${combined}</li>`;
+      }).join('')}</ul>`;
     }
 
     // Table or other complex types can be added later

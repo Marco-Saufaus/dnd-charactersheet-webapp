@@ -24,7 +24,7 @@ dist-ssr
 *.sln
 *.sw?
 
-__pycache__/*
+**/__pycache__/*
 .venv/*
 poetry.lock
 
