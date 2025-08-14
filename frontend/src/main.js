@@ -1,15 +1,8 @@
 import './style.css'
 
-// Simple template loader with caching
-const templateCache = new Map();
-async function loadTemplate(path) {
-    if (templateCache.has(path)) return templateCache.get(path);
-    const res = await fetch(path);
-    if (!res.ok) throw new Error(`Failed to load template ${path}`);
-    const html = await res.text();
-    templateCache.set(path, html);
-    return html;
-}
+// ---------------------------
+// Routing
+// ---------------------------
 
 // Simple client-side router
 function router() {
@@ -38,7 +31,14 @@ function router() {
     }
 }
 
-// Render character list table
+async function renderSearchCategoryList(container) {
+    container.innerHTML = await loadTemplate('/src/templates/search-categories.html');
+}
+
+// ---------------------------
+// Characters
+// ---------------------------
+
 async function renderCharacterList(container) {
     container.innerHTML = await loadTemplate('/src/templates/characters.html');
     try {
@@ -73,7 +73,10 @@ async function renderCharacterList(container) {
     }
 }
 
-// Render actions list table
+// ---------------------------
+// Actions
+// ---------------------------
+
 async function renderActionsList(container) {
     container.innerHTML = await loadTemplate('/src/templates/actions.html');
     try {
@@ -105,6 +108,38 @@ async function renderActionsList(container) {
         }
     }
 }
+
+async function renderActionDetail(container) {
+    const id = window.location.pathname.split('/').pop();
+    container.innerHTML = `
+    <div id="action-detail">Loading…</div>
+  `;
+    try {
+        const res = await fetch(`http://localhost:8000/actions/${id}`);
+        if (!res.ok) throw new Error('Not found');
+        const item = await res.json();
+        const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+        const el = document.getElementById('action-detail');
+
+        // Load detail card template and replace tokens
+        const tpl = await loadTemplate('/src/templates/action-detail.html');
+        const html = tpl
+            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+            .replace('{{TIME}}', escapeHtml(formatActionTime(item.time)) || '—')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+        el.innerHTML = html;
+
+    } catch (e) {
+        console.error('Error loading action:', e);
+        const el = document.getElementById('action-detail');
+        if (el) el.textContent = 'Error loading action';
+    }
+}
+
+// ---------------------------
+// Backgrounds
+// ---------------------------
 
 async function renderBackgroundsList(container) {
     container.innerHTML = await loadTemplate('/src/templates/backgrounds.html');
@@ -138,55 +173,6 @@ async function renderBackgroundsList(container) {
     }
 }
 
-async function renderSearchCategoryList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/search-categories.html');
-}
-
-// Handle navigation without full page reload
-document.addEventListener('click', (e) => {
-    if (e.target.matches('a[data-link]')) {
-        e.preventDefault();
-        window.history.pushState(null, '', e.target.href);
-        router();
-    }
-});
-
-// Handle browser navigation (back/forward)
-window.addEventListener('popstate', router);
-
-// Initial route
-router();
-
-// Render single action details page
-async function renderActionDetail(container) {
-    const id = window.location.pathname.split('/').pop();
-    container.innerHTML = `
-    <div id="action-detail">Loading…</div>
-  `;
-    try {
-        const res = await fetch(`http://localhost:8000/actions/${id}`);
-        if (!res.ok) throw new Error('Not found');
-        const item = await res.json();
-        const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
-        const el = document.getElementById('action-detail');
-
-        // Load detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/action-detail.html');
-        const html = tpl
-            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-            .replace('{{TIME}}', escapeHtml(formatTime(item.time)) || '—')
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
-            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
-        el.innerHTML = html;
-
-    } catch (e) {
-        console.error('Error loading action:', e);
-        const el = document.getElementById('action-detail');
-        if (el) el.textContent = 'Error loading action';
-    }
-}
-
-// Render single background details page
 async function renderBackgroundDetail(container) {
     const id = window.location.pathname.split('/').pop();
     container.innerHTML = `
@@ -214,6 +200,21 @@ async function renderBackgroundDetail(container) {
     }
 }
 
+// ---------------------------
+// Utility Functions
+// ---------------------------
+
+// Simple template loader with caching
+const templateCache = new Map();
+async function loadTemplate(path) {
+    if (templateCache.has(path)) return templateCache.get(path);
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`Failed to load template ${path}`);
+    const html = await res.text();
+    templateCache.set(path, html);
+    return html;
+}
+
 // Minimal HTML escaper for pre/dynamic inserts
 function escapeHtml(str) {
     return String(str ?? '')
@@ -223,7 +224,7 @@ function escapeHtml(str) {
 }
 
 // Format common 5eTools-style time fields
-function formatTime(time) {
+function formatActionTime(time) {
     if (!time) return '';
     if (typeof time === 'string') return time;
     const fmt = (t) => {
@@ -292,3 +293,22 @@ function renderEntries(entries) {
 
     return entries.map(render).join('');
 }
+
+// ---------------------------
+// Main
+// ---------------------------
+
+// Handle navigation without full page reload
+document.addEventListener('click', (e) => {
+    if (e.target.matches('a[data-link]')) {
+        e.preventDefault();
+        window.history.pushState(null, '', e.target.href);
+        router();
+    }
+});
+
+// Handle browser navigation (back/forward)
+window.addEventListener('popstate', router);
+
+// Initial route
+router();
