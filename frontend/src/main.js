@@ -224,22 +224,23 @@ async function renderActionDetail(container) {
   try {
     const res = await fetch(`http://localhost:8000/actions/${id}`);
     if (!res.ok) throw new Error('Not found');
-    const a = await res.json();
-    const displaySource = a.source === 'XPHB' ? 'PHB24' : (a.source ?? '');
+    const item = await res.json();
+    const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
     const el = document.getElementById('action-detail');
     // Render all fields we know about, and dump the rest for now
     el.innerHTML = `
       <div class="card">
-        <h3>${a.name ?? ''}</h3>        
-        <p><strong>Time:</strong> ${escapeHtml(formatTime(a.time)) || '—'}</p>
+        <h3>${item.name ?? ''}</h3>        
+        <p><strong>Time:</strong> ${escapeHtml(formatTime(item.time)) || '—'}</p>
         <section>
           <h4>Description</h4>
-          ${renderEntries(a.entries ?? a.desc ?? a.description ?? []) || '<em>No description</em>'}
+          ${renderEntries(item.entries ?? item.desc ?? item.description ?? []) || '<em>No description</em>'}
         </section>
-        <p><strong>Source:</strong> ${displaySource}${a.page != null ? ` p.${a.page}` : ''}</p>
+        <p><strong>Source:</strong> ${displaySource}${item.page != null ? ` p.${item.page}` : ''}</p>
       </div>
     `;
   } catch (e) {
+    console.error('Error loading action:', e);
     const el = document.getElementById('action-detail');
     if (el) el.textContent = 'Error loading action';
   }
@@ -254,24 +255,25 @@ async function renderBackgroundDetail(container) {
   try {
     const res = await fetch(`http://localhost:8000/backgrounds/${id}`);
     if (!res.ok) throw new Error('Not found');
-    const a = await res.json();
-    const displaySource = b.source === 'XPHB' ? 'PHB24' : (b.source ?? '');
-    const el = document.getElementById('action-detail');
+    const item = await res.json();
+    const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+    const el = document.getElementById('background-detail');
     // Render all fields we know about, and dump the rest for now
     el.innerHTML = `
       <div class="card">
-        <h3>${b.name ?? ''}</h3>        
-        <p><strong>Time:</strong> ${escapeHtml(formatTime(b.time)) || '—'}</p>
+        <h3>${item.name ?? ''}</h3>        
+        <p><strong>Time:</strong> ${escapeHtml(formatTime(item.time)) || '—'}</p>
         <section>
           <h4>Description</h4>
-          ${renderEntries(b.entries ?? b.desc ?? b.description ?? []) || '<em>No description</em>'}
+          ${renderEntries(item.entries ?? item.desc ?? item.description ?? []) || '<em>No description</em>'}
         </section>
-        <p><strong>Source:</strong> ${displaySource}${b.page != null ? ` p.${b.page}` : ''}</p>
+        <p><strong>Source:</strong> ${displaySource}${item.page != null ? ` p.${item.page}` : ''}</p>
       </div>
     `;
   } catch (e) {
+    console.error('Error loading background:', e);
     const el = document.getElementById('background-detail');
-    if (el) el.textContent = 'Error loading action';
+    if (el) el.textContent = 'Error loading background';
   }
 }
 
