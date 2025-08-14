@@ -1,4 +1,4 @@
-# D&D Character Sheet App
+# D&D Character Sheet Webapp
 
 A modern web application for managing Dungeons & Dragons character sheets.
 
