@@ -7,6 +7,7 @@ from dnd_backend.config.database import MongoManager
 from dnd_backend.models.character_model import Character
 from dnd_backend.models.action_model import Action
 from dnd_backend.models.background_model import Background
+from dnd_backend.models.feat_model import Feat
 
 app = FastAPI(
     title="D&D Character Sheet API",
@@ -121,3 +122,30 @@ async def get_background(background_id: str):
         return doc
     except Exception:
         raise HTTPException(status_code=404, detail="Background not found")
+    
+@app.get("/search/feats", response_model=list[Feat])
+async def list_feats(q: Optional[str] = None, source: Optional[str] = None, skip: int = 0, limit: int = 80):
+    # Build filter
+    query: dict = {}
+    if q:
+        query["name"] = {"$regex": q, "$options": "i"}
+    if source:
+        query["source"] = source
+
+    feats = []
+    cursor = MongoManager.db.feats.find(query).skip(skip).limit(limit)
+    async for doc in cursor:
+        doc["_id"] = str(doc["_id"])
+        feats.append(doc)
+    return feats
+
+@app.get("/feats/{feat_id}")
+async def get_feat(feat_id: str):
+    try:
+        doc = await MongoManager.db.feats.find_one({"_id": ObjectId(feat_id)})
+        if not doc:
+            raise HTTPException(status_code=404, detail="Feat not found")
+        doc["_id"] = str(doc["_id"])
+        return doc
+    except Exception:
+        raise HTTPException(status_code=404, detail="Feat not found")

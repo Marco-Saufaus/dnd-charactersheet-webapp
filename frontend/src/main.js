@@ -24,6 +24,10 @@ function router() {
         renderBackgroundsList(container);
     } else if (path.startsWith('/backgrounds/')) {
         renderBackgroundDetail(container);
+    } else if (path === '/search/feats') {
+        renderFeatsList(container);
+    } else if (path.startsWith('/feats/')) {
+        renderFeatDetail(container);
     } else if (path === '/settings') {
         container.innerHTML = '<p>Settings page coming soon.</p>';
     } else {
@@ -197,6 +201,103 @@ async function renderBackgroundDetail(container) {
         console.error('Error loading background:', e);
         const el = document.getElementById('background-detail');
         if (el) el.textContent = 'Error loading background';
+    }
+}
+
+// ---------------------------
+// Feats
+// ---------------------------
+
+async function renderFeatsList(container) {
+    container.innerHTML = await loadTemplate('/src/templates/feats.html');
+    try {
+        const response = await fetch('http://localhost:8000/search/feats');
+        const feats = await response.json();
+
+        const tables = {
+            origin: document.querySelector('#origin-feats-table tbody'),
+            general: document.querySelector('#general-feats-table tbody'),
+            fightingStyle: document.querySelector('#fighting-styles-table tbody'),
+            epicBoon: document.querySelector('#epic-boons-table tbody'),
+        };
+
+        if (Object.values(tables).some(t => !t)) return;
+        Object.values(tables).forEach(t => t.innerHTML = '');
+
+        if (!Array.isArray(feats) || feats.length === 0) {
+            Object.values(tables).forEach(t => {
+                t.innerHTML = '<tr><td colspan="2">No feats found</td></tr>';
+            });
+            return;
+        }
+
+        feats.forEach(f => {
+            const categoryKey = resolveFeatCategory(f); // maps to one of the keys in tables
+            const tbody = tables[categoryKey] ?? tables.general; // default fallback
+            const row = document.createElement('tr');
+            const src = formatSourceWithPage(f.source, f.page);
+            row.innerHTML = `
+        <td><a href="/feats/${f._id}" data-link>${f.name ?? ''}</a></td>
+        <td>${src}</td>
+      `;
+            tbody.appendChild(row);
+        });
+
+        Object.entries(tables).forEach(([key, t]) => {
+            if (!t.hasChildNodes()) {
+                t.innerHTML = '<tr><td colspan="2">No feats in this category</td></tr>';
+            }
+        });
+    } catch (error) {
+        // On error, show message in every table
+        ['#origin-feats-table tbody',
+         '#general-feats-table tbody',
+         '#fighting-styles-table tbody',
+         '#epic-boons-table tbody'
+        ].forEach(sel => {
+            const t = document.querySelector(sel);
+            if (t) t.innerHTML = '<tr><td colspan="2">Error loading feats</td></tr>';
+        });
+    }
+}
+
+function resolveFeatCategory(feat) {
+    const raw =
+        (feat.category ?? '').toString().toLowerCase();
+
+    if (raw == "o") return 'origin';
+    if (raw == "fs") return 'fightingStyle';
+    if (raw == "eb") return 'epicBoon';
+    if (raw == "g") return 'general';
+
+    return 'general';
+}
+
+async function renderFeatDetail(container) {
+    const id = window.location.pathname.split('/').pop();
+    container.innerHTML = `
+    <div id="feat-detail">Loading…</div>
+  `;
+    try {
+        const res = await fetch(`http://localhost:8000/feats/${id}`);
+        if (!res.ok) throw new Error('Not found');
+        const item = await res.json();
+        const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+        const el = document.getElementById('feat-detail');
+
+        // Load feat detail card template and replace tokens
+        const tpl = await loadTemplate('/src/templates/feat-detail.html');
+        const html = tpl
+            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+            .replace('{{CATEGORY}}', item.category ? `<strong></strong> ${escapeHtml(item.category)}` : '')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+        el.innerHTML = html;
+
+    } catch (e) {
+        console.error('Error loading feat:', e);
+        const el = document.getElementById('feat-detail');
+        if (el) el.textContent = 'Error loading feat';
     }
 }
 
