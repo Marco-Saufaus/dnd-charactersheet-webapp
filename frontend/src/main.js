@@ -11,25 +11,42 @@ function router() {
     container.innerHTML = '';
 
     if (path === '/' || path === '/index.html') {
-        // Home page: leave blank or add a placeholder if desired
+        // Home page
     } else if (path === '/characters') {
         renderCharacterList(container);
     } else if (path === '/search') {
         renderSearchCategoryList(container);
+
     } else if (path === '/search/actions') {
         renderActionsList(container);
     } else if (path.startsWith('/actions/')) {
         renderActionDetail(container);
+
     } else if (path === '/search/backgrounds') {
         renderBackgroundsList(container);
     } else if (path.startsWith('/backgrounds/')) {
         renderBackgroundDetail(container);
+
+    } else if (path === '/search/conditions') {
+        // renderConditionsList(container);
+        container.innerHTML = '<p>Condition search (todo)</p>';
+    } else if (path.startsWith('/conditions/')) {
+        // renderConditionDetail(container);
+        container.innerHTML = '<p>Condition detail (todo)</p>';
+
     } else if (path === '/search/feats') {
         renderFeatsList(container);
     } else if (path.startsWith('/feats/')) {
         renderFeatDetail(container);
-    } else if (path === '/settings') {
-        container.innerHTML = '<p>Settings page coming soon.</p>';
+
+    } else if (path === '/search/items') {
+        renderItemsList(container);
+    } else if (path.startsWith('/items/')) {
+        container.innerHTML = '<p>Item detail (todo)</p>';
+
+    } else if (path.startsWith('/spells/')) {
+        container.innerHTML = '<p>Spell detail (todo)</p>';
+
     } else {
         container.innerHTML = '<p>Page not found.</p>';
     }
@@ -262,15 +279,26 @@ async function renderFeatsList(container) {
 }
 
 function resolveFeatCategory(feat) {
-    const raw =
-        (feat.category ?? '').toString().toLowerCase();
+    const raw = (feat.category ?? '').toString().trim().toUpperCase();
+    switch (raw) {
+        case 'O': return 'origin';
+        case 'FS': return 'fightingStyle';
+        case 'EB': return 'epicBoon';
+        case 'G': return 'general';
+        default: return 'general';
+    }
+}
 
-    if (raw == "o") return 'origin';
-    if (raw == "fs") return 'fightingStyle';
-    if (raw == "eb") return 'epicBoon';
-    if (raw == "g") return 'general';
-
-    return 'general';
+// New: user‑facing label for detail view
+function featCategoryLabel(code) {
+    const c = (code ?? '').toString().trim().toUpperCase();
+    switch (c) {
+        case 'O': return 'Origin Feat';
+        case 'FS': return 'Fighting Style';
+        case 'EB': return 'Epic Boon';
+        case 'G': return 'General Feat';
+        default: return ''; // unknown / omit
+    }
 }
 
 async function renderFeatDetail(container) {
@@ -289,7 +317,10 @@ async function renderFeatDetail(container) {
         const tpl = await loadTemplate('/src/templates/feat-detail.html');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-            .replace('{{CATEGORY}}', item.category ? `<strong></strong> ${escapeHtml(item.category)}` : '')
+            .replace('{{CATEGORY}}', (() => {
+                const label = featCategoryLabel(item.category);
+                return label ? `<p class="feat-category"><strong>${escapeHtml(label)}</strong></p>` : '';
+            })())
             .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
@@ -359,40 +390,71 @@ function formatSourceWithPage(source, page) {
 // Render simple description from 5eTools-style entries arrays
 function renderEntries(entries) {
     if (!entries) return '';
-    if (typeof entries === 'string') return `<p>${escapeHtml(entries)}</p>`;
+    if (typeof entries === 'string') return `<p>${formatInlineRefs(entries)}</p>`;
     if (!Array.isArray(entries)) return '';
 
     const render = (it) => {
         if (it == null) return '';
-        if (typeof it === 'string') return `<p>${escapeHtml(it)}</p>`;
+        if (typeof it === 'string') return `<p>${formatInlineRefs(it)}</p>`;
         if (Array.isArray(it)) return it.map(render).join('');
         if (typeof it !== 'object') return '';
 
-        // Named + nested entries
         if (it.entries) {
             const name = it.name ? `<p><strong>${escapeHtml(it.name)}</strong></p>` : '';
             return `${name}${render(it.entries)}`;
         }
 
-        // List type
         if (it.type === 'list' && Array.isArray(it.items)) {
             return `<ul class="entry-list">${it.items.map(li => {
-                if (typeof li === 'string') return `<li>${escapeHtml(li)}</li>`;
+                if (typeof li === 'string') return `<li>${formatInlineRefs(li)}</li>`;
                 if (!li || typeof li !== 'object') return '';
-                const hasName = !!li.name;
-                const hasEntry = li.entry != null && li.entry !== '';
-                const nameHtml = hasName ? `<strong>${escapeHtml(li.name)}</strong>` : '';
-                const entryHtml = hasEntry ? escapeHtml(typeof li.entry === 'string' ? li.entry : JSON.stringify(li.entry)) : '';
-                const combined = hasName && hasEntry ? `${nameHtml} ${entryHtml}` : (nameHtml || entryHtml || '');
+                const nameHtml = li.name ? `<strong>${escapeHtml(li.name)}</strong>` : '';
+                const entryRaw = typeof li.entry === 'string'
+                    ? formatInlineRefs(li.entry)
+                    : (li.entry != null ? escapeHtml(JSON.stringify(li.entry)) : '');
+                const combined = nameHtml && entryRaw ? `${nameHtml} ${entryRaw}` : (nameHtml || entryRaw || '');
                 return `<li>${combined}</li>`;
             }).join('')}</ul>`;
         }
 
-        // Table or other complex types can be added later
         return '';
     };
 
     return entries.map(render).join('');
+}
+
+// Parse 5eTools-style inline refs like {@skill Insight|XPHB}
+function formatInlineRefs(str) {
+    if (!str || typeof str !== 'string') return '';
+    // Regex captures: type, inner content up to closing }
+    // We then split inner content by '|' (first segment is display/name)
+    const refRegex = /\{@([a-zA-Z]+)\s+([^}]+)}/g;
+    return str.replace(refRegex, (_m, typeRaw, inner) => {
+        const type = typeRaw.toLowerCase().trim();
+        const parts = inner.split('|').map(p => p.trim());
+        const display = parts[0] || '';
+        const source = parts[1] || '';
+        const routeBase = resolveRefRouteBase(type);
+        if (!routeBase || !display) {
+            return escapeHtml(display || inner); // fallback plain text
+        }
+        const slug = encodeURIComponent(display);
+        return `<a href="/${routeBase}/${slug}" data-link title="${escapeHtml(display)}${source ? ' (' + escapeHtml(source) + ')' : ''}">${escapeHtml(display)}</a>`;
+    });
+}
+
+function resolveRefRouteBase(type) {
+    switch (type) {
+        case 'item': return 'items';
+        case 'feat': return 'feats';
+        case 'spell': return 'spells';
+        case 'background': return 'backgrounds';
+        case 'action': return 'actions';
+        case 'condition': return 'conditions';
+        case 'variantrule': return 'variants';
+        // Add more mappings as needed
+        default: return '';
+    }
 }
 
 // ---------------------------

@@ -2,6 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from bson import ObjectId
 from typing import Optional
+import re  # Added for name-based lookup
 
 from dnd_backend.config.database import MongoManager
 from dnd_backend.models.character_model import Character
@@ -88,12 +89,23 @@ async def list_actions(q: Optional[str] = None, source: Optional[str] = None, sk
 @app.get("/actions/{action_id}")
 async def get_action(action_id: str):
     try:
-        doc = await MongoManager.db.actions.find_one({"_id": ObjectId(action_id)})
+        query = {}
+        if ObjectId.is_valid(action_id):
+            query = {"_id": ObjectId(action_id)}
+        else:
+            # Exact (case-insensitive) name match; ^...$ prevents partial matches.
+            escaped = re.escape(action_id)
+            query = {"name": {"$regex": f"^{escaped}$", "$options": "i"}}
+
+        doc = await MongoManager.db.actions.find_one(query)
         if not doc:
             raise HTTPException(status_code=404, detail="Action not found")
-        doc["_id"] = str(doc["_id"])  # Convert ObjectId to string for JSON
-        return doc  # Return full document (all fields)
+        doc["_id"] = str(doc["_id"])
+        return doc
+    except HTTPException:
+        raise
     except Exception:
+        # Broad except kept to mirror existing pattern; consider logging internally.
         raise HTTPException(status_code=404, detail="Action not found")
     
 @app.get("/search/backgrounds", response_model=list[Background])
@@ -115,12 +127,23 @@ async def list_backgrounds(q: Optional[str] = None, source: Optional[str] = None
 @app.get("/backgrounds/{background_id}")
 async def get_background(background_id: str):
     try:
-        doc = await MongoManager.db.backgrounds.find_one({"_id": ObjectId(background_id)})
+        query = {}
+        if ObjectId.is_valid(background_id):
+            query = {"_id": ObjectId(background_id)}
+        else:
+            # Exact (case-insensitive) name match; ^...$ prevents partial matches.
+            escaped = re.escape(background_id)
+            query = {"name": {"$regex": f"^{escaped}$", "$options": "i"}}
+
+        doc = await MongoManager.db.backgrounds.find_one(query)
         if not doc:
             raise HTTPException(status_code=404, detail="Background not found")
-        doc["_id"] = str(doc["_id"])  # Convert ObjectId to string for JSON
+        doc["_id"] = str(doc["_id"])
         return doc
+    except HTTPException:
+        raise
     except Exception:
+        # Broad except kept to mirror existing pattern; consider logging internally.
         raise HTTPException(status_code=404, detail="Background not found")
     
 @app.get("/search/feats", response_model=list[Feat])
@@ -142,10 +165,21 @@ async def list_feats(q: Optional[str] = None, source: Optional[str] = None, skip
 @app.get("/feats/{feat_id}")
 async def get_feat(feat_id: str):
     try:
-        doc = await MongoManager.db.feats.find_one({"_id": ObjectId(feat_id)})
+        query = {}
+        if ObjectId.is_valid(feat_id):
+            query = {"_id": ObjectId(feat_id)}
+        else:
+            # Exact (case-insensitive) name match; ^...$ prevents partial matches.
+            escaped = re.escape(feat_id)
+            query = {"name": {"$regex": f"^{escaped}$", "$options": "i"}}
+
+        doc = await MongoManager.db.feats.find_one(query)
         if not doc:
             raise HTTPException(status_code=404, detail="Feat not found")
         doc["_id"] = str(doc["_id"])
         return doc
+    except HTTPException:
+        raise
     except Exception:
+        # Broad except kept to mirror existing pattern; consider logging internally.
         raise HTTPException(status_code=404, detail="Feat not found")
