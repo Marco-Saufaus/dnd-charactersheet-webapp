@@ -1,0 +1,35 @@
+%% Feat Detail Page Flow Diagrams
+
+%% Sequence Diagram
+sequenceDiagram
+    autonumber
+    participant U as User
+    participant B as Browser (URL: /feats/Magic%20Initiate)
+    participant R as Frontend Router (main.js)
+    participant V as Feat Detail Renderer
+    participant API as FastAPI /feats/{feat_id}
+    participant DB as MongoDB feats collection
+
+    U->>B: Navigate (click / pushState / back)
+    B->>R: router() invoked
+    R->>V: renderFeatDetail(container)
+    V->>V: Extract id = decodeURIComponent(last segment)
+    V->>API: GET http://localhost:8000/feats/Magic%20Initiate
+    API->>API: Determine lookup type
+    alt feat_id is valid ObjectId
+        API->>DB: find_one({_id: ObjectId(...)})
+    else Not an ObjectId
+        API->>API: escaped = re.escape("Magic Initiate")
+        API->>DB: find_one({ name: { $regex: ^Magic\\ Initiate$, i } })
+    end
+    DB-->>API: Document or null
+    alt Found
+        API->>API: Convert _id to str
+        API-->>V: 200 JSON feat
+        V->>V: Build HTML (template + tokens)
+        V->>B: Update DOM (#feat-detail)
+    else Not Found
+        API-->>V: 404 {"detail":"Feat not found"}
+        V->>B: Render error UI
+    end
+
