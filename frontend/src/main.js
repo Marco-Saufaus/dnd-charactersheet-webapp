@@ -452,6 +452,7 @@ function resolveRefRouteBase(type) {
         case 'action': return 'actions';
         case 'condition': return 'conditions';
         case 'variantrule': return 'variants';
+        case 'filter': return 'spells';
         // Add more mappings as needed
         default: return '';
     }
