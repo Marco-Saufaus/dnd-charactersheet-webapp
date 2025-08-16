@@ -17,29 +17,29 @@ function router() {
     } else if (path === '/search') {
         renderSearchCategoryList(container);
 
-    } else if (path === '/search/actions') {
+    } else if (path === '/actions') {
         renderActionsList(container);
     } else if (path.startsWith('/actions/')) {
         renderActionDetail(container);
 
-    } else if (path === '/search/backgrounds') {
+    } else if (path === '/backgrounds') {
         renderBackgroundsList(container);
     } else if (path.startsWith('/backgrounds/')) {
         renderBackgroundDetail(container);
 
-    } else if (path === '/search/conditions') {
+    } else if (path === '/conditions') {
         // renderConditionsList(container);
         container.innerHTML = '<p>Condition search (todo)</p>';
     } else if (path.startsWith('/conditions/')) {
         // renderConditionDetail(container);
         container.innerHTML = '<p>Condition detail (todo)</p>';
 
-    } else if (path === '/search/feats') {
+    } else if (path === '/feats') {
         renderFeatsList(container);
     } else if (path.startsWith('/feats/')) {
         renderFeatDetail(container);
 
-    } else if (path === '/search/items') {
+    } else if (path === '/items') {
         renderItemsList(container);
     } else if (path.startsWith('/items/')) {
         container.innerHTML = '<p>Item detail (todo)</p>';
@@ -101,7 +101,7 @@ async function renderCharacterList(container) {
 async function renderActionsList(container) {
     container.innerHTML = await loadTemplate('/src/templates/actions.html');
     try {
-        const response = await fetch('http://localhost:8000/search/actions');
+        const response = await fetch('http://localhost:8000/actions/search');
         const actions = await response.json();
 
         const tbody = document.querySelector('#actions-table tbody');
@@ -117,7 +117,7 @@ async function renderActionsList(container) {
             const row = document.createElement('tr');
             const src = formatSourceWithPage(a.source, a.page);
             row.innerHTML = `
-        <td><a href="/actions/${a._id}" data-link>${a.name ?? ''}</a></td>
+        <td><a href="/actions/${a.name}" data-link>${a.name ?? ''}</a></td>
         <td>${src}</td>
       `;
             tbody.appendChild(row);
@@ -165,7 +165,7 @@ async function renderActionDetail(container) {
 async function renderBackgroundsList(container) {
     container.innerHTML = await loadTemplate('/src/templates/backgrounds.html');
     try {
-        const response = await fetch('http://localhost:8000/search/backgrounds');
+        const response = await fetch('http://localhost:8000/backgrounds/search');
         const backgrounds = await response.json();
 
         const tbody = document.querySelector('#backgrounds-table tbody');
@@ -181,7 +181,7 @@ async function renderBackgroundsList(container) {
             const row = document.createElement('tr');
             const src = formatSourceWithPage(b.source, b.page);
             row.innerHTML = `
-        <td><a href="/backgrounds/${b._id}" data-link>${b.name ?? ''}</a></td>
+        <td><a href="/backgrounds/${b.name}" data-link>${b.name ?? ''}</a></td>
         <td>${src}</td>
       `;
             tbody.appendChild(row);
@@ -228,7 +228,7 @@ async function renderBackgroundDetail(container) {
 async function renderFeatsList(container) {
     container.innerHTML = await loadTemplate('/src/templates/feats.html');
     try {
-        const response = await fetch('http://localhost:8000/search/feats');
+        const response = await fetch('http://localhost:8000/feats/search');
         const feats = await response.json();
 
         const tables = {
@@ -254,7 +254,7 @@ async function renderFeatsList(container) {
             const row = document.createElement('tr');
             const src = formatSourceWithPage(f.source, f.page);
             row.innerHTML = `
-        <td><a href="/feats/${f._id}" data-link>${f.name ?? ''}</a></td>
+        <td><a href="/feats/${f.name}" data-link>${f.name ?? ''}</a></td>
         <td>${src}</td>
       `;
             tbody.appendChild(row);
