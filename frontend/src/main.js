@@ -42,8 +42,18 @@ function router() {
     } else if (path.startsWith('/items/')) {
         container.innerHTML = '<p>Item detail (todo)</p>';
 
+    } else if (path === '/skills') {
+        renderSkillsList(container);
+    } else if (path.startsWith('/skills/')) {
+        renderSkillDetail(container);
+
     } else if (path.startsWith('/spells/')) {
         container.innerHTML = '<p>Spell detail (todo)</p>';
+
+    } else if (path === '/variant-rules') {
+        renderVariantsList(container);
+    } else if (path.startsWith('/variant-rules/')) {
+        renderVariantDetail(container);  
 
     } else {
         container.innerHTML = '<p>Page not found.</p>';
@@ -339,29 +349,6 @@ async function renderFeatsList(container) {
     }
 }
 
-function resolveFeatCategory(feat) {
-    const raw = (feat.category ?? '').toString().trim().toUpperCase();
-    switch (raw) {
-        case 'O': return 'origin';
-        case 'FS': return 'fightingStyle';
-        case 'EB': return 'epicBoon';
-        case 'G': return 'general';
-        default: return 'general';
-    }
-}
-
-// New: user‑facing label for detail view
-function featCategoryLabel(code) {
-    const c = (code ?? '').toString().trim().toUpperCase();
-    switch (c) {
-        case 'O': return 'Origin Feat';
-        case 'FS': return 'Fighting Style';
-        case 'EB': return 'Epic Boon';
-        case 'G': return 'General Feat';
-        default: return ''; // unknown / omit
-    }
-}
-
 async function renderFeatDetail(container) {
     const id = window.location.pathname.split('/').pop();
     container.innerHTML = `
@@ -390,6 +377,133 @@ async function renderFeatDetail(container) {
         console.error('Error loading feat:', e);
         const el = document.getElementById('feat-detail');
         if (el) el.textContent = 'Error loading feat';
+    }
+}
+
+// ---------------------------
+// Skills
+// ---------------------------
+
+async function renderSkillsList(container) {
+    container.innerHTML = await loadTemplate('/src/templates/skills.html');
+    try {
+        const response = await fetch('http://localhost:8000/skills/search');
+        const skills = await response.json();
+
+        const tbody = document.querySelector('#skills-table tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (!Array.isArray(skills) || skills.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2">No skills found</td></tr>';
+            return;
+        }
+
+        skills.forEach(s => {
+            const row = document.createElement('tr');
+            const src = formatSourceWithPage(s.source, s.page);
+            row.innerHTML = `
+        <td><a href="/skills/${s.name}" data-link>${s.name ?? ''}</a></td>
+        <td>${src}</td>
+      `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        const tbody = document.querySelector('#skills-table tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="2">Error loading skills</td></tr>';
+        }
+    }
+}
+
+async function renderSkillDetail(container) {
+    const id = window.location.pathname.split('/').pop();
+    container.innerHTML = `
+    <div id="skill-detail">Loading…</div>
+  `;
+    try {
+        const res = await fetch(`http://localhost:8000/skills/${id}`);
+        if (!res.ok) throw new Error('Not found');
+        const item = await res.json();
+        const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+        const el = document.getElementById('skill-detail');
+
+        // Load skill detail card template and replace tokens
+        const tpl = await loadTemplate('/src/templates/skill-detail.html');
+        const html = tpl
+            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+               .replace('{{ABILITY}}', escapeHtml(abilityFullName(item.ability)))
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+        el.innerHTML = html;
+
+    } catch (e) {
+        console.error('Error loading skill:', e);
+        const el = document.getElementById('skill-detail');
+        if (el) el.textContent = 'Error loading skill';
+    }
+}
+
+// ---------------------------
+// Variant Rules
+// ---------------------------
+
+async function renderVariantsList(container) {
+    container.innerHTML = await loadTemplate('/src/templates/variants.html');
+    try {
+        const response = await fetch('http://localhost:8000/variant-rules/search');
+        const variants = await response.json();
+
+        const tbody = document.querySelector('#variants-table tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (!Array.isArray(variants) || variants.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2">No Variant Rules found</td></tr>';
+            return;
+        }
+
+        variants.forEach(v => {
+            const row = document.createElement('tr');
+            const src = formatSourceWithPage(v.source, v.page);
+            row.innerHTML = `
+        <td><a href="/variant-rules/${v.name}" data-link>${v.name ?? ''}</a></td>
+        <td>${src}</td>
+      `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        const tbody = document.querySelector('#variants-table tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="2">Error loading Variant Rules</td></tr>';
+        }
+    }
+}
+
+async function renderVariantDetail(container) {
+    const id = window.location.pathname.split('/').pop();
+    container.innerHTML = `
+    <div id="variant-detail">Loading…</div>
+  `;
+    try {
+        const res = await fetch(`http://localhost:8000/variant-rules/${id}`);
+        if (!res.ok) throw new Error('Not found');
+        const item = await res.json();
+        const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+        const el = document.getElementById('variant-detail');
+
+        // Load variant-rule detail card template and replace tokens
+        const tpl = await loadTemplate('/src/templates/variant-detail.html');
+        const html = tpl
+            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+        el.innerHTML = html;
+
+    } catch (e) {
+        console.error('Error loading Variant Rule:', e);
+        const el = document.getElementById('variant-detail');
+        if (el) el.textContent = 'Error loading Variant Rule';
     }
 }
 
@@ -446,6 +560,43 @@ function formatSourceWithPage(source, page) {
     if (s) return s;
     if (hasPage) return `p.${page}`;
     return '';
+}
+
+function abilityFullName(abbrev) {
+    if (!abbrev) return '';
+    const map = {
+        STR: 'Strength',
+        DEX: 'Dexterity',
+        CON: 'Constitution',
+        INT: 'Intelligence',
+        WIS: 'Wisdom',
+        CHA: 'Charisma'
+    };
+    const key = String(abbrev).trim().toUpperCase();
+    return map[key] || key.charAt(0).toUpperCase() + key.slice(1).toLowerCase();
+}
+
+function resolveFeatCategory(feat) {
+    const raw = (feat.category ?? '').toString().trim().toUpperCase();
+    switch (raw) {
+        case 'O': return 'origin';
+        case 'FS': return 'fightingStyle';
+        case 'EB': return 'epicBoon';
+        case 'G': return 'general';
+        default: return 'general';
+    }
+}
+
+// New: user‑facing label for detail view
+function featCategoryLabel(code) {
+    const c = (code ?? '').toString().trim().toUpperCase();
+    switch (c) {
+        case 'O': return 'Origin Feat';
+        case 'FS': return 'Fighting Style';
+        case 'EB': return 'Epic Boon';
+        case 'G': return 'General Feat';
+        default: return ''; // unknown / omit
+    }
 }
 
 // Render simple description from 5eTools-style entries arrays
@@ -512,8 +663,9 @@ function resolveRefRouteBase(type) {
         case 'background': return 'backgrounds';
         case 'action': return 'actions';
         case 'condition': return 'conditions';
-        case 'variantrule': return 'variants';
-        case 'filter': return 'spells';
+        case 'variantrule': return 'variant-rules';
+        case 'filter': return 'items';
+        case 'skill': return 'skills';
         // Add more mappings as needed
         default: return '';
     }
