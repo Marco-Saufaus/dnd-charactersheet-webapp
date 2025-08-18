@@ -7,6 +7,8 @@ from dnd_backend.routers.actions import router as actions_router
 from dnd_backend.routers.backgrounds import router as backgrounds_router
 from dnd_backend.routers.feats import router as feats_router
 from dnd_backend.routers.conditions import router as conditions_router
+from dnd_backend.routers.skills import router as skills_router
+from dnd_backend.routers.variants import router as variants_router
 
 app = FastAPI(
     title="D&D Character Sheet API",
@@ -41,4 +43,6 @@ app.include_router(actions_router)
 app.include_router(backgrounds_router)
 app.include_router(feats_router)
 app.include_router(conditions_router)
+app.include_router(skills_router)
+app.include_router(variants_router)
 
