@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Optional
 import re
 from dnd_backend.config.database import MongoManager
-from dnd_backend.models.background_model import Variant
+from dnd_backend.models.variant_model import Variant
 
 router = APIRouter(prefix="/variant-rules", tags=["variants"])
 
