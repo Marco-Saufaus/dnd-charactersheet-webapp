@@ -18,7 +18,7 @@ async def import_variants():
     try:
         with open(VARIANTS_JSON_PATH, encoding="utf-8") as f:
             data = json.load(f)
-            variants = data.get("variant", [])
+            variants = data.get("variantrule", [])
             variants_to_insert = [v for v in variants if matches_criteria(v)]
 
             if variants_to_insert:
