@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Optional
 import re
 from dnd_backend.config.database import MongoManager
-from dnd_backend.models.background_model import Skill
+from dnd_backend.models.skill_model import Skill
 
 router = APIRouter(prefix="/skills", tags=["skills"])
 
