@@ -8,6 +8,8 @@ from dnd_backend.routers.characters import router as characters_router
 from dnd_backend.routers.conditions import router as conditions_router
 from dnd_backend.routers.feats import router as feats_router
 from dnd_backend.routers.optionalfeatures import router as optionalfeatures_router
+from dnd_backend.routers.races import router as races_router
+from dnd_backend.routers.senses import router as senses_router
 from dnd_backend.routers.skills import router as skills_router
 from dnd_backend.routers.variants import router as variants_router
 
@@ -45,6 +47,8 @@ app.include_router(characters_router)
 app.include_router(conditions_router)
 app.include_router(feats_router)
 app.include_router(optionalfeatures_router)
+app.include_router(races_router)
+app.include_router(senses_router)
 app.include_router(skills_router)
 app.include_router(variants_router)
 
