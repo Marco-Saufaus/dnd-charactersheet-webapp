@@ -32,15 +32,16 @@ function router() {
     } else if (path.startsWith('/conditions/')) {
         renderConditionDetail(container);
 
-    } else if (path === '/feats') {
-        renderFeatsList(container);
-    } else if (path.startsWith('/feats/')) {
-        renderFeatDetail(container);
+    } else if (path.startsWith('/feats')) {
+        handleFeatsRoute(container);
 
     } else if (path === '/items') {
         renderItemsList(container);
     } else if (path.startsWith('/items/')) {
         container.innerHTML = '<p>Item detail (todo)</p>';
+
+    } else if (path.startsWith('/optional-features')) {
+        handleOptionalFeaturesRoute(container);
 
     } else if (path === '/skills') {
         renderSkillsList(container);
@@ -296,56 +297,88 @@ async function renderConditionDetail(container) {
 // Feats
 // ---------------------------
 
+const FEAT_CATEGORY_DISPLAY_TO_BACKEND = {
+    'origin-feats': 'origin',
+    'general-feats': 'general',
+    'fighting-styles': 'fighting-style',
+    'epic-boons': 'epic-boon'
+};
+
+function backendToDisplayFeatCategory(slug) {
+    switch (slug) {
+        case 'origin': return 'origin-feats';
+        case 'general': return 'general-feats';
+        case 'fighting-style': return 'fighting-styles';
+        case 'epic-boon': return 'epic-boons';
+        default: return slug; // fallback
+    }
+}
+
+function isDisplayFeatCategory(segment) {
+    return Object.prototype.hasOwnProperty.call(FEAT_CATEGORY_DISPLAY_TO_BACKEND, segment);
+}
+
+function handleFeatsRoute(container) {
+    const parts = window.location.pathname.split('/').filter(Boolean); // [ 'feats', ...]
+    if (parts.length === 1) {
+        renderFeatsList(container);
+        return;
+    }
+    // parts[1] is either display category or a direct feat name (legacy)
+    if (parts.length === 2) {
+        if (isDisplayFeatCategory(parts[1])) {
+            renderFeatsCategory(container, FEAT_CATEGORY_DISPLAY_TO_BACKEND[parts[1]]);
+        } else {
+            // treat as direct feat name
+            renderFeatDetail(container);
+        }
+        return;
+    }
+    // length >=3 -> assume category + feat name (use last segment as feat)
+    if (parts.length >= 3 && isDisplayFeatCategory(parts[1])) {
+        renderFeatDetail(container);
+        return;
+    }
+    // Fallback
+    renderFeatDetail(container);
+}
+
 async function renderFeatsList(container) {
     container.innerHTML = await loadTemplate('/src/templates/feats.html');
+    const ul = document.getElementById('feat-categories');
+    if (!ul) return;
+    ul.innerHTML = '<li>Loading…</li>';
     try {
-        const response = await fetch('http://localhost:8000/feats/search');
-        const feats = await response.json();
+        const res = await fetch('http://localhost:8000/feats/categories');
+        if (!res.ok) throw new Error('Failed');
+        const categories = await res.json();
+        ul.innerHTML = '';
+        categories.forEach(c => {
+            const displaySlug = backendToDisplayFeatCategory(c.slug);
+            const li = document.createElement('li');
+            li.innerHTML = `<a href="/feats/${displaySlug}" data-link>${escapeHtml(c.label)} (${c.count})</a>`;
+            ul.appendChild(li);
+        });
+    } catch (e) {
+        ul.innerHTML = '<li>Error loading categories</li>';
+    }
+}
 
-        const tables = {
-            origin: document.querySelector('#origin-feats-table tbody'),
-            general: document.querySelector('#general-feats-table tbody'),
-            fightingStyle: document.querySelector('#fighting-styles-table tbody'),
-            epicBoon: document.querySelector('#epic-boons-table tbody'),
-        };
-
-        if (Object.values(tables).some(t => !t)) return;
-        Object.values(tables).forEach(t => t.innerHTML = '');
-
-        if (!Array.isArray(feats) || feats.length === 0) {
-            Object.values(tables).forEach(t => {
-                t.innerHTML = '<tr><td colspan="2">No feats found</td></tr>';
-            });
-            return;
-        }
-
-        feats.forEach(f => {
-            const categoryKey = resolveFeatCategory(f); // maps to one of the keys in tables
-            const tbody = tables[categoryKey] ?? tables.general; // default fallback
-            const row = document.createElement('tr');
+async function renderFeatsCategory(container, backendSlug) {
+    
+    container.innerHTML = '<h2>Feats</h2><p>Loading category…</p>';
+    try {
+        const res = await fetch(`http://localhost:8000/feats/category/${backendSlug}`);
+        if (!res.ok) throw new Error('Not found');
+        const data = await res.json();
+        const { category, feats } = data;
+        const listHtml = feats && feats.length ? `<table class="feats-table"><thead><tr><th>Name</th><th>Source</th></tr></thead><tbody>${feats.map(f => {
             const src = formatSourceWithPage(f.source, f.page);
-            row.innerHTML = `
-        <td><a href="/feats/${f.name}" data-link>${f.name ?? ''}</a></td>
-        <td>${src}</td>
-      `;
-            tbody.appendChild(row);
-        });
-
-        Object.entries(tables).forEach(([key, t]) => {
-            if (!t.hasChildNodes()) {
-                t.innerHTML = '<tr><td colspan="2">No feats in this category</td></tr>';
-            }
-        });
-    } catch (error) {
-        // On error, show message in every table
-        ['#origin-feats-table tbody',
-         '#general-feats-table tbody',
-         '#fighting-styles-table tbody',
-         '#epic-boons-table tbody'
-        ].forEach(sel => {
-            const t = document.querySelector(sel);
-            if (t) t.innerHTML = '<tr><td colspan="2">Error loading feats</td></tr>';
-        });
+            return `<tr><td><a href="/feats/${backendToDisplayFeatCategory(category.slug)}/${encodeURIComponent(f.name)}" data-link>${escapeHtml(f.name)}</a></td><td>${src}</td></tr>`;
+        }).join('')}</tbody></table>` : '<p>No feats in this category.</p>';
+        container.innerHTML = `<h2>${escapeHtml(category.label)}</h2><p><a href="/feats" data-link>&larr; All Categories</a></p>${listHtml}`;
+    } catch (e) {
+        container.innerHTML = '<h2>Feats</h2><p>Error loading category.</p><p><a href="/feats" data-link>Back</a></p>';
     }
 }
 
@@ -379,6 +412,111 @@ async function renderFeatDetail(container) {
         if (el) el.textContent = 'Error loading feat';
     }
 }
+
+// ---------------------------
+// Optional Features
+// ---------------------------
+
+const OPTIONALFEATURE_CATEGORY_DISPLAY_TO_BACKEND = {
+    'eldritch-invocations': 'invocation',
+    'battlemaster-maneuvers': 'maneuver',
+    'meta-magic': 'metamagic'
+};
+
+function backendToDisplayOptionalFeatureCategory(slug) {
+    switch (slug) {
+        case 'invocation': return 'eldritch-invocations';
+        case 'maneuver': return 'battlemaster-maneuvers';
+        case 'metamagic': return 'meta-magic';
+        default: return slug; // fallback
+    }
+}
+
+function isDisplayOptionalFeatureCategory(segment) {
+    return Object.prototype.hasOwnProperty.call(OPTIONALFEATURE_CATEGORY_DISPLAY_TO_BACKEND, segment);
+}
+
+function handleOptionalFeaturesRoute(container) {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts.length === 1) {
+        renderOptionalFeaturesList(container);
+        return;
+    }
+    if (parts.length === 2) {
+        if (isDisplayOptionalFeatureCategory(parts[1])) {
+            renderOptionalFeaturesCategory(container, OPTIONALFEATURE_CATEGORY_DISPLAY_TO_BACKEND[parts[1]]);
+        } else {
+            renderOptionalFeatureDetail(container);
+        }
+        return;
+    }
+    if (parts.length >= 3 && isDisplayOptionalFeatureCategory(parts[1])) {
+        renderOptionalFeatureDetail(container);
+        return;
+    }
+    renderOptionalFeatureDetail(container);
+}
+
+async function renderOptionalFeaturesList(container) {
+    container.innerHTML = await loadTemplate('/src/templates/optionalfeatures.html');
+    const ul = document.getElementById('optionalfeature-categories');
+    if (!ul) return;
+    ul.innerHTML = '<li>Loading…</li>';
+    try {
+        const res = await fetch('http://localhost:8000/optional-features/categories');
+        if (!res.ok) throw new Error('Failed');
+        const categories = await res.json();
+        ul.innerHTML = '';
+        categories.forEach(c => {
+            const displaySlug = backendToDisplayOptionalFeatureCategory(c.slug);
+            const li = document.createElement('li');
+            li.innerHTML = `<a href="/optional-features/${displaySlug}" data-link>${escapeHtml(c.label)} (${c.count})</a>`;
+            ul.appendChild(li);
+        });
+    } catch (e) {
+        ul.innerHTML = '<li>Error loading categories</li>';
+    }
+}
+
+async function renderOptionalFeaturesCategory(container, backendSlug) {
+    container.innerHTML = '<h2>Optional Features</h2><p>Loading category…</p>';
+    try {
+        const res = await fetch(`http://localhost:8000/optional-features/category/${backendSlug}`);
+        if (!res.ok) throw new Error('Not found');
+        const data = await res.json();
+        const { category, optionalfeatures } = data;
+        const listHtml = optionalfeatures && optionalfeatures.length ? `<table class="optionalfeatures-table"><thead><tr><th>Name</th><th>Source</th></tr></thead><tbody>${optionalfeatures.map(f => {
+            const src = formatSourceWithPage(f.source, f.page);
+            return `<tr><td><a href="/optional-features/${backendToDisplayOptionalFeatureCategory(category.slug)}/${encodeURIComponent(f.name)}" data-link>${escapeHtml(f.name)}</a></td><td>${src}</td></tr>`;
+        }).join('')}</tbody></table>` : '<p>No optional features in this category.</p>';
+        container.innerHTML = `<h2>${escapeHtml(category.label)}</h2><p><a href="/optional-features" data-link>&larr; All Categories</a></p>${listHtml}`;
+    } catch (e) {
+        container.innerHTML = '<h2>Optional Features</h2><p>Error loading category.</p><p><a href="/optional-features" data-link>Back</a></p>';
+    }
+}
+
+async function renderOptionalFeatureDetail(container) {
+    const id = window.location.pathname.split('/').pop();
+    container.innerHTML = '<div id="optionalfeature-detail">Loading…</div>';
+    try {
+        const res = await fetch(`http://localhost:8000/optional-features/${id}`);
+        if (!res.ok) throw new Error('Not found');
+        const item = await res.json();
+        const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+        const el = document.getElementById('optionalfeature-detail');
+        const tpl = await loadTemplate('/src/templates/optionalfeature-detail.html');
+        const html = tpl
+            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+            .replace('{{CATEGORY}}', escapeHtml(item.type || item.category || ''))
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+        el.innerHTML = html;
+    } catch (e) {
+        const el = document.getElementById('optionalfeature-detail');
+        if (el) el.textContent = 'Error loading optional feature';
+    }
+}
+
 
 // ---------------------------
 // Skills
