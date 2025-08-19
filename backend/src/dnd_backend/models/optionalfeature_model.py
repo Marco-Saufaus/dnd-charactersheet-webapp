@@ -7,8 +7,7 @@ class OptionalFeature(BaseModel):
     source: Optional[str] = None
     page: Optional[int] = None
     basicRules: Optional[bool] = None
-    category: Optional[str] = None
-    type: Optional[str] = None
+    featureType: Optional[str] = None
 
     class Config:
         populate_by_name = True
