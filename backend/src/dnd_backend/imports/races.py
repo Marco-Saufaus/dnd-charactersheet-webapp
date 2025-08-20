@@ -26,5 +26,7 @@ async def import_races():
                 await MongoManager.insert_data(races_to_insert, COLLECTION_NAME)
             else:
                 print("No races matched the criteria. Nothing inserted.")
+            
+            return [r['name'] for r in races_to_insert]
     finally:
         MongoManager.close_database_connection()

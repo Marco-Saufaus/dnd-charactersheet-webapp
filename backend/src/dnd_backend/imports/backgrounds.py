@@ -25,5 +25,7 @@ async def import_backgrounds():
                 await MongoManager.insert_data(backgrounds_to_insert, COLLECTION_NAME)
             else:
                 print("No backgrounds matched the criteria. Nothing inserted.")
+
+            return [b['name'] for b in backgrounds_to_insert]
     finally:
         MongoManager.close_database_connection()

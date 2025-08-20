@@ -25,5 +25,7 @@ async def import_skills():
                 await MongoManager.insert_data(skills_to_insert, COLLECTION_NAME)
             else:
                 print("No skills matched the criteria. Nothing inserted.")
+            
+            return [s['name'] for s in skills_to_insert]
     finally:
         MongoManager.close_database_connection()

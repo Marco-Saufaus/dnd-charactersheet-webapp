@@ -27,5 +27,17 @@ async def import_optionalfeatures():
                 await MongoManager.insert_data(optionalfeatures_to_insert, COLLECTION_NAME)
             else:
                 print("No Optional Features matched the criteria. Nothing inserted.")
+            
+            # Return list of optional feature names followed by unique feature types
+            names = [o['name'] for o in optionalfeatures_to_insert]
+            # Explains: 
+            # result = []
+            # for o in optionalfeatures_to_insert:
+            #     for t in o['featureType']:
+            #         result.append(t)
+            raw_types: list[str] = [t for o in optionalfeatures_to_insert for t in o['featureType']]                                                      
+            feature_types = sorted(set(raw_types))
+            
+            return names + feature_types
     finally:
         MongoManager.close_database_connection()

@@ -25,5 +25,7 @@ async def import_conditions():
                 await MongoManager.insert_data(conditions_to_insert, COLLECTION_NAME)
             else:
                 print("No conditions matched the criteria. Nothing inserted.")
+            
+            return [c['name'] for c in conditions_to_insert]
     finally:
         MongoManager.close_database_connection()

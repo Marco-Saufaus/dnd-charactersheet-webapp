@@ -25,5 +25,7 @@ async def import_variants():
                 await MongoManager.insert_data(variants_to_insert, COLLECTION_NAME)
             else:
                 print("No Variant Rule matched the criteria. Nothing inserted.")
+
+            return [v['name'] for v in variants_to_insert]
     finally:
         MongoManager.close_database_connection()

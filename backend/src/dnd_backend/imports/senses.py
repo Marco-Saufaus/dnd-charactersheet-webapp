@@ -26,5 +26,7 @@ async def import_senses():
                 await MongoManager.insert_data(senses_to_insert, COLLECTION_NAME)
             else:
                 print("No senses matched the criteria. Nothing inserted.")
+
+            return [s['name'] for s in senses_to_insert]
     finally:
         MongoManager.close_database_connection()
