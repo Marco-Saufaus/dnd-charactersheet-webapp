@@ -6,7 +6,6 @@ from dnd_backend.models.optionalfeature_model import OptionalFeature
 
 router = APIRouter(prefix="/optional-features", tags=["optional"])
 
-# Slug -> { code, label }
 CATEGORY_MAP: dict[str, dict[str, str]] = {
     "invocation": {"code": "EI", "label": "Eldritch Invocations"},
     "maneuver": {"code": "MV:B", "label": "Battle Master Maneuvers"},
@@ -19,15 +18,12 @@ def _serialize(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/search", response_model=list[OptionalFeature])
 async def list_optionalfeatures(q: Optional[str] = None, source: Optional[str] = None, skip: int = 0, limit: int = 50):
-
     query: dict = {}
     if q:
         query["name"] = {"$regex": q, "$options": "i"}
     if source:
         query["source"] = source
-
     optionalfeatures: List[Dict[str, Any]] = []
-
     cursor = MongoManager.db.optionalfeatures.find(query).skip(skip).limit(limit)
     async for doc in cursor:
         optionalfeatures.append(_serialize(doc))
@@ -35,16 +31,14 @@ async def list_optionalfeatures(q: Optional[str] = None, source: Optional[str] =
 
 @router.get("/categories")
 async def list_categories():
-    """Return optional feature categories with counts (counting optionalfeatures collection)."""
     out = []
     for slug, meta in CATEGORY_MAP.items():
-        # Data uses featureType; allow either field (future-proof if we later normalize)
         code = meta["code"]
         count = await MongoManager.db.optionalfeatures.count_documents({
             "$or": [
                 {"category": code},
                 {"featureType": code},
-                {"featureType": {"$in": [code]}},  # in case featureType is an array
+                {"featureType": {"$in": [code]}},
             ]
         })
         out.append({

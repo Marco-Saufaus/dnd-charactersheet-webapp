@@ -13,7 +13,6 @@ async def list_senses(q: Optional[str] = None, source: Optional[str] = None, ski
         query["name"] = {"$regex": q, "$options": "i"}
     if source:
         query["source"] = source
-
     senses = []
     cursor = MongoManager.db.senses.find(query).skip(skip).limit(limit)
     async for doc in cursor:

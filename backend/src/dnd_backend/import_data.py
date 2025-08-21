@@ -1,14 +1,14 @@
 import asyncio
 from dnd_backend.config.database import MongoManager
-from dnd_backend.imports.actions import import_actions
-from dnd_backend.imports.backgrounds import import_backgrounds
-from dnd_backend.imports.conditions import import_conditions
-from dnd_backend.imports.feats import import_feats
-from dnd_backend.imports.optionalfeatures import import_optionalfeatures
-from dnd_backend.imports.races import import_races
-from dnd_backend.imports.senses import import_senses
-from dnd_backend.imports.skills import import_skills
-from dnd_backend.imports.variants import import_variants
+from dnd_backend.imports.actions_import import import_actions
+from dnd_backend.imports.backgrounds_import import import_backgrounds
+from dnd_backend.imports.conditions_import import import_conditions
+from dnd_backend.imports.feats_import import import_feats
+from dnd_backend.imports.optionalfeatures_import import import_optionalfeatures
+from dnd_backend.imports.races_import import import_races
+from dnd_backend.imports.senses_import import import_senses
+from dnd_backend.imports.skills_import import import_skills
+from dnd_backend.imports.variants_import import import_variants
 
 
 async def _run_import_tasks() -> dict:

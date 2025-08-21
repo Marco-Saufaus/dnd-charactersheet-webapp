@@ -2,16 +2,16 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from dnd_backend.config.database import MongoManager
-from dnd_backend.routers.actions import router as actions_router
-from dnd_backend.routers.backgrounds import router as backgrounds_router
-from dnd_backend.routers.characters import router as characters_router
-from dnd_backend.routers.conditions import router as conditions_router
-from dnd_backend.routers.feats import router as feats_router
-from dnd_backend.routers.optionalfeatures import router as optionalfeatures_router
-from dnd_backend.routers.races import router as races_router
-from dnd_backend.routers.senses import router as senses_router
-from dnd_backend.routers.skills import router as skills_router
-from dnd_backend.routers.variants import router as variants_router
+from dnd_backend.routers.actions_router import router as actions_router
+from dnd_backend.routers.backgrounds_router import router as backgrounds_router
+from dnd_backend.routers.characters_router import router as characters_router
+from dnd_backend.routers.conditions_router import router as conditions_router
+from dnd_backend.routers.feats_router import router as feats_router
+from dnd_backend.routers.optionalfeatures_router import router as optionalfeatures_router
+from dnd_backend.routers.races_router import router as races_router
+from dnd_backend.routers.senses_router import router as senses_router
+from dnd_backend.routers.skills_router import router as skills_router
+from dnd_backend.routers.variants_router import router as variants_router
 
 app = FastAPI(
     title="D&D Character Sheet API",

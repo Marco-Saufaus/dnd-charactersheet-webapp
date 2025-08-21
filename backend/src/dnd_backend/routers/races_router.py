@@ -13,7 +13,6 @@ async def list_races(q: Optional[str] = None, source: Optional[str] = None, skip
         query["name"] = {"$regex": q, "$options": "i"}
     if source:
         query["source"] = source
-
     races = []
     cursor = MongoManager.db.races.find(query).skip(skip).limit(limit)
     async for doc in cursor:

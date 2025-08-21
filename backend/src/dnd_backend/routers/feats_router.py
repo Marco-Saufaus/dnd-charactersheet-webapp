@@ -6,7 +6,6 @@ from dnd_backend.models.feat_model import Feat
 
 router = APIRouter(prefix="/feats", tags=["feats"])
 
-# Slug -> { code, label }
 CATEGORY_MAP: dict[str, dict[str, str]] = {
     "origin": {"code": "O", "label": "Origin Feats"},
     "general": {"code": "G", "label": "General Feats"},
@@ -20,15 +19,12 @@ def _serialize(doc: Dict[str, Any]) -> Dict[str, Any]:
 
 @router.get("/search", response_model=list[Feat])
 async def list_feats(q: Optional[str] = None, source: Optional[str] = None, skip: int = 0, limit: int = 80):
-
     query: dict = {}
     if q:
         query["name"] = {"$regex": q, "$options": "i"}
     if source:
         query["source"] = source
-
     feats: List[Dict[str, Any]] = []
-    
     cursor = MongoManager.db.feats.find(query).skip(skip).limit(limit)
     async for doc in cursor:
         feats.append(_serialize(doc))
@@ -36,7 +32,6 @@ async def list_feats(q: Optional[str] = None, source: Optional[str] = None, skip
 
 @router.get("/categories")
 async def list_categories():
-
     out = []
     for slug, meta in CATEGORY_MAP.items():
         count = await MongoManager.db.feats.count_documents({"category": meta["code"]})

@@ -13,7 +13,6 @@ async def list_variants(q: Optional[str] = None, source: Optional[str] = None, s
         query["name"] = {"$regex": q, "$options": "i"}
     if source:
         query["source"] = source
-
     variants = []
     cursor = MongoManager.db.variants.find(query).skip(skip).limit(limit)
     async for doc in cursor:
