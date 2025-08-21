@@ -4,6 +4,7 @@ from dnd_backend.imports.actions_import import import_actions
 from dnd_backend.imports.backgrounds_import import import_backgrounds
 from dnd_backend.imports.conditions_import import import_conditions
 from dnd_backend.imports.feats_import import import_feats
+from dnd_backend.imports.items_import import import_items
 from dnd_backend.imports.languages_import import import_languages
 from dnd_backend.imports.optionalfeatures_import import import_optionalfeatures
 from dnd_backend.imports.races_import import import_races
@@ -20,11 +21,12 @@ async def _run_import_tasks() -> dict:
     for invocation through the Poetry script entry point, preventing 'coroutine was
     never awaited' runtime warnings.
     """
-    (actions, backgrounds, conditions, feats, languages, optionalfeatures, races, senses, skills, variants,) = await asyncio.gather(
+    (actions, backgrounds, conditions, feats, items, languages, optionalfeatures, races, senses, skills, variants,) = await asyncio.gather(
         import_actions(),
         import_backgrounds(),
         import_conditions(),
         import_feats(),
+        import_items(),
         import_languages(),
         import_optionalfeatures(),
         import_races(),
@@ -38,6 +40,7 @@ async def _run_import_tasks() -> dict:
         "backgrounds": backgrounds,
         "conditions": conditions,
         "feats": feats,
+        "items": items,
         "languages": languages,
         "optionalfeatures": optionalfeatures,
         "races": races,
@@ -54,7 +57,7 @@ async def _run_import_tasks() -> dict:
         MongoManager.close_database_connection()
 
 
-def main() -> dict:  # pragma: no cover - thin wrapper
+def main() -> dict:
     """Synchronous entry point for Poetry script.
 
     Returns the collected results dictionary.
@@ -63,5 +66,5 @@ def main() -> dict:  # pragma: no cover - thin wrapper
     
     
 
-if __name__ == "__main__":  # pragma: no cover
+if __name__ == "__main__":
     main()

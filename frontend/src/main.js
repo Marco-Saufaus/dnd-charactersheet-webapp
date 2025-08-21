@@ -35,10 +35,8 @@ function router() {
     } else if (path.startsWith('/feats')) {
         handleFeatsRoute(container);
 
-    // } else if (path === '/items') {
-       //  renderItemsList(container);
-    } else if (path.startsWith('/items/')) {
-        container.innerHTML = '<p>Item detail (todo)</p>';
+    } else if (path.startsWith('/items')) {
+        handleItemsRoute(container);
 
     } else if (path.startsWith('/languages')) {
         handleLanguagesRoute(container);
@@ -423,6 +421,220 @@ async function renderFeatDetail(container) {
         console.error('Error loading feat:', e);
         const el = document.getElementById('feat-detail');
         if (el) el.textContent = 'Error loading feat';
+    }
+}
+
+// ---------------------------
+// Items
+// ---------------------------
+
+const ITEM_CATEGORY_DISPLAY_TO_BACKEND = {
+    "general-items": "general",
+    "vehicles": "vehicles",
+    "mounts": "mounts",
+    "spellcasting-focus": "focus",
+    "tools": "tools",
+    "potions": "potions",
+    "scrolls": "scrolls",
+    "magic-items": "magic",
+    "treasure": "treasure",
+};
+
+function backendToDisplayItemCategory(slug) {
+    switch (slug) {
+        case 'general': return 'general-items';
+        case 'vehicles': return 'vehicles';
+        case 'mounts': return 'mounts';
+        case 'focus': return 'spellcasting-focus';
+        case 'tools': return 'tools';
+        case 'potions': return 'potions';
+        case 'scrolls': return 'scrolls';
+        case 'magic': return 'magic-items';
+        case 'treasure': return 'treasure';
+        default: return slug; // fallback
+    }
+}
+
+function isDisplayItemCategory(segment) {
+    return Object.prototype.hasOwnProperty.call(ITEM_CATEGORY_DISPLAY_TO_BACKEND, segment);
+}
+
+function handleItemsRoute(container) {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts.length === 1) {
+        renderItemsList(container);
+        return;
+    }
+    // parts[1] is either display category or a direct item name (legacy)
+    if (parts.length === 2) {
+        if (isDisplayItemCategory(parts[1])) {
+            renderItemsCategory(container, ITEM_CATEGORY_DISPLAY_TO_BACKEND[parts[1]]);
+        } else {
+            // treat as direct item name
+            renderItemDetail(container);
+        }
+        return;
+    }
+    // length >=3 -> assume category + item name (use last segment as item)
+    if (parts.length >= 3 && isDisplayItemCategory(parts[1])) {
+        renderItemDetail(container);
+        return;
+    }
+    // Fallback
+    renderItemDetail(container);
+}
+
+async function renderItemsList(container) {
+    container.innerHTML = await loadTemplate('/src/templates/items.html');
+    const ul = document.getElementById('item-categories');
+    if (!ul) return;
+    ul.innerHTML = '<li>Loading…</li>';
+    try {
+        const res = await fetch('http://localhost:8000/items/categories');
+        if (!res.ok) throw new Error('Failed');
+        const categories = await res.json();
+        ul.innerHTML = '';
+        categories.forEach(c => {
+            const displaySlug = backendToDisplayItemCategory(c.slug);
+            const li = document.createElement('li');
+            li.innerHTML = `<a href="/items/${displaySlug}" data-link>${escapeHtml(c.label)} (${c.count})</a>`;
+            ul.appendChild(li);
+        });
+    } catch (e) {
+        ul.innerHTML = '<li>Error loading categories</li>';
+    }
+}
+
+async function renderItemsCategory(container, backendSlug) {
+    
+    container.innerHTML = '<h2>Items</h2><p>Loading category…</p>';
+    try {
+        const res = await fetch(`http://localhost:8000/items/category/${backendSlug}`);
+        if (!res.ok) throw new Error('Not found');
+        const data = await res.json();
+        const { category, items } = data;
+        const isMagic = (category.slug || '').toLowerCase() === 'magic';
+        const listHtml = items && items.length ? `<table class="items-table"><thead><tr>
+            <th>Name</th>${isMagic ? '<th>Rarity</th>' : ''}<th>Source</th>
+        </tr></thead><tbody>${items.map(i => {
+            const src = formatSourceWithPage(i.source, i.page);
+            const rarity = (() => {
+                const r = (i.rarity ?? '').toString().trim();
+                if (!r || r.toLowerCase() === 'none') return '';
+                return r.replace(/\b\w/g, c => c.toUpperCase());
+            })();
+            return `<tr>
+                <td><a href="/items/${backendToDisplayItemCategory(category.slug)}/${encodeURIComponent(i.name)}" data-link>${escapeHtml(i.name)}</a></td>
+                ${isMagic ? `<td>${escapeHtml(rarity)}</td>` : ''}
+                <td>${src}</td>
+            </tr>`;
+        }).join('')}</tbody></table>` : '<p>No items in this category.</p>';
+        container.innerHTML = `<h2>${escapeHtml(category.label)}</h2><p><a href="/items" data-link>&larr; All Categories</a></p>${listHtml}`;
+    } catch (e) {
+        container.innerHTML = '<h2>Items</h2><p>Error loading category.</p><p><a href="/items" data-link>Back</a></p>';
+    }
+}
+
+async function renderItemDetail(container) {
+    const id = window.location.pathname.split('/').pop();
+    container.innerHTML = `
+    <div id="item-detail">Loading…</div>
+  `;
+    try {
+        const res = await fetch(`http://localhost:8000/items/${id}`);
+        if (!res.ok) throw new Error('Not found');
+        const item = await res.json();
+        const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+        const el = document.getElementById('item-detail');
+
+        // Load item detail card template and replace tokens
+        const tpl = await loadTemplate('/src/templates/item-details.html');
+    // Build stats (value/weight) when available
+        const statsHtml = (() => {
+            const parts = [];
+
+            const v = item.value ?? item.cost ?? item.price;
+            let valueText = '';
+            const formatCopper = (n) => {
+                const cp = Number(n);
+                if (!Number.isFinite(cp)) return '';                
+                if (cp % 100 === 0) return `${cp / 100} gp`;
+                if (cp % 10 === 0) return `${cp / 10} sp`;
+                return `${cp} cp`;
+            };
+            if (v && typeof v === 'object') {
+                const num = v.number ?? v.amount ?? v.value ?? v.qty ?? '';
+                const cur = v.currency ?? v.unit ?? v.abbrev ?? v.type ?? '';
+                if (cur) {
+                    valueText = `${num}${cur ? ' ' + cur : ''}`.trim();
+                } else if (num !== '') {
+                    valueText = formatCopper(num);
+                }
+            } else if (v !== undefined && v !== null && v !== '') {
+                if (typeof v === 'number' || /^\d+$/.test(String(v))) {
+                    valueText = formatCopper(v);
+                } else {
+                    valueText = String(v);
+                }
+            }
+            // Some datasets use 'value' and 'valueUnit'
+            if (!valueText && (item.value != null) && (item.valueUnit || item.unit)) {
+                valueText = `${item.value} ${item.valueUnit || item.unit}`.trim();
+            }
+            if (valueText) {
+                let valueDisplay = valueText.trim();
+                if (!/[.!?]$/.test(valueDisplay)) valueDisplay += '.'; // ensure trailing period
+                parts.push(`<span><strong>Value:</strong> ${escapeHtml(valueDisplay)}</span>`);
+            }
+
+            // weight can be number or object; support common shapes
+            const w = item.weight ?? item.wt ?? item.weightNumber;
+            if (w !== undefined && w !== null && w !== '') {
+                const wVal = typeof w === 'object' ? (w.number ?? w.amount ?? w.value) : w;
+                if (wVal !== undefined && wVal !== null && wVal !== '') {
+                    parts.push(`<span><strong>Weight:</strong> ${escapeHtml(String(wVal))} lb</span>`);
+                }
+            }
+
+            if (!parts.length) return '';
+            return `<p class="item-stats">${parts.join(' • ')}</p>`;
+        })();
+
+        const html = tpl
+            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+            .replace('{{CATEGORY}}', (() => {
+                const rawTypeLabel = itemCategoryLabel(item.type ?? item.category) || '';
+                const typeLabel = rawTypeLabel
+                    ? rawTypeLabel.charAt(0).toUpperCase() + rawTypeLabel.slice(1).toLowerCase()
+                    : '';
+                // Base item display from baseItem (e.g., "chain mail|XPHB" -> "Chain Mail")
+                let baseItemText = '';
+                if (item.baseItem) {
+                    let raw = String(item.baseItem).trim();
+                    if (raw.includes('|')) raw = raw.split('|', 1)[0];
+                    baseItemText = raw.replace(/\b\w/g, c => c.toUpperCase());
+                }
+                // Rarity + attunement
+                const rarityRaw = (item.rarity ?? '').toString().trim();
+                const raritySeg = (rarityRaw && rarityRaw.toLowerCase() !== 'none')
+                    ? rarityRaw.toLowerCase() : '';
+                const req = item.reqAttune ?? item.requiresAttunement ?? item.attunement;
+                const attuneSeg = req ? 'requires attunement' : '';
+
+                const left = typeLabel ? `${typeLabel}${baseItemText ? ` (${baseItemText})` : ''}` : '';
+                const right = raritySeg ? `${raritySeg}${attuneSeg ? ` (${attuneSeg})` : ''}` : '';
+                const combined = [left, right].filter(Boolean).join(', ');
+                return combined ? `<p class="item-category"><strong>${escapeHtml(combined)}</strong></p>` : '';
+            })())
+            .replace('{{STATS}}', statsHtml)
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+        el.innerHTML = html;
+
+    } catch (e) {
+        console.error('Error loading item:', e);
+        const el = document.getElementById('item-detail');
+        if (el) el.textContent = 'Error loading item';
     }
 }
 
@@ -983,6 +1195,72 @@ function featCategoryLabel(code) {
     }
 }
 
+function itemCategoryLabel(code) {
+    if (code == null || String(code).trim() === '') return 'Magic Item';
+
+    // Normalize and strip qualifiers like '|XDMG'
+    const raw = String(code).trim().toUpperCase();
+    const c = raw.includes('|') ? raw.split('|', 1)[0] : raw;
+
+    // Known item type code labels (5eTools-style)
+    const MAP = {
+        // Weapons
+        'M': 'Melee Weapon',
+        'R': 'Ranged Weapon',
+        'A': 'Ammunition',
+        'AF': 'Ammunition',
+
+        // Armor & shields
+        'LA': 'Light Armor',
+        'MA': 'Medium Armor',
+        'HA': 'Heavy Armor',
+        'S': 'Shield',
+
+        // Tools & sets
+        'AT': "Artisan's Tools",
+        'T': 'Tool',
+        'GS': 'Gaming Set',
+        'INS': 'Musical Instrument',
+
+        // Spellcasting focus
+        'SCF': 'Spellcasting Focus',
+
+        // Equipment & consumables
+        'G': 'Adventuring Gear',
+        'FD': 'Food and Drink',
+        'P': 'Potion',
+        'SC': 'Spellscroll',
+        'MNT': 'Mount',
+        'TG': 'Trade Good',
+        'TAH': 'Tack and Harness',
+        'EXP': 'Explosive',
+        'TB': 'Tool Bundle',
+
+        // Vehicles
+        'VEH': 'Vehicle',
+        'AIR': 'Air Vehicle',
+        'SHP': 'Ship',
+
+        // Magic item categories
+        'RD': 'Rod',
+        'WD': 'Wand',
+        'RG': 'Ring',
+        'W': 'Wondrous Item',
+
+        // Common treasure codes
+        '$': 'Treasure',
+        '$A': 'Art Object',
+        '$C': 'Coin',
+        '$G': 'Gemstone',
+    };
+
+    if (Object.prototype.hasOwnProperty.call(MAP, c)) return MAP[c];
+    if (c.startsWith('$')) return 'Treasure';
+
+    // Fallbacks: treat unknowns conservatively
+    return '';
+}
+
 function languageCategoryLabel(code) {
     const c = (code ?? '').toString().trim().toLowerCase();
     switch (c) {
@@ -1023,12 +1301,21 @@ function renderEntries(entries) {
             return `<ul class="entry-list">${it.items.map(li => {
                 if (typeof li === 'string') return `<li>${formatInlineRefs(li)}</li>`;
                 if (!li || typeof li !== 'object') return '';
+
                 const nameHtml = li.name ? `<strong>${escapeHtml(li.name)}</strong>` : '';
-                const entryRaw = typeof li.entry === 'string'
-                    ? formatInlineRefs(li.entry)
-                    : (li.entry != null ? escapeHtml(JSON.stringify(li.entry)) : '');
-                const combined = nameHtml && entryRaw ? `${nameHtml} ${entryRaw}` : (nameHtml || entryRaw || '');
-                return `<li>${combined}</li>`;
+
+                // Prefer 'entry' if present; otherwise support 'entries'
+                let contentHtml = '';
+                if (li.entry != null) {
+                    contentHtml = (typeof li.entry === 'string') ? formatInlineRefs(li.entry) : render(li.entry);
+                } else if (li.entries != null) {
+                    contentHtml = render(li.entries);
+                }
+                // Flatten paragraph wrappers for inline list presentation
+                contentHtml = (contentHtml || '').replace(/<\/?p>/g, '').trim();
+
+                const combined = nameHtml && contentHtml ? `${nameHtml} ${contentHtml}` : (nameHtml || contentHtml || '');
+                return combined ? `<li>${combined}</li>` : '';
             }).join('')}</ul>`;
         }
 
@@ -1049,6 +1336,13 @@ function formatInlineRefs(str) {
         const parts = inner.split('|').map(p => p.trim());
         const display = parts[0] || '';
         const source = parts[1] || '';
+
+        // Special cases with plain-text formatting (no links)
+        if (type === 'dc') {
+            // e.g., "{@dc 15}" -> "DC15"
+            return `DC${escapeHtml(display)}`;
+        }
+
         const routeBase = resolveRefRouteBase(type);
         if (!routeBase || !display) {
             return escapeHtml(display || inner); // fallback plain text
