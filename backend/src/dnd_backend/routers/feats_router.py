@@ -1,12 +1,12 @@
 from fastapi import APIRouter, HTTPException
-from typing import Optional, List, Dict, Any
+from typing import Optional
 import re
 from dnd_backend.config.database import MongoManager
 from dnd_backend.models.feat_model import Feat
 
 router = APIRouter(prefix="/feats", tags=["feats"])
 
-CATEGORY_MAP: dict[str, dict[str, Any]] = {
+CATEGORY_MAP: dict[str, dict] = {
     # Single-code categories keep the previous shape {code: str}
     "origin": {"code": "O", "label": "Origin Feats"},
     "general": {"code": "G", "label": "General Feats"},
@@ -15,7 +15,7 @@ CATEGORY_MAP: dict[str, dict[str, Any]] = {
     "epic-boon": {"code": "EB", "label": "Epic Boons"},
 }
 
-def _serialize(doc: Dict[str, Any]) -> Dict[str, Any]:
+def _serialize(doc: dict) -> dict:
     doc["_id"] = str(doc["_id"])
     return doc
 
@@ -26,7 +26,8 @@ async def list_feats(q: Optional[str] = None, source: Optional[str] = None, skip
         query["name"] = {"$regex": q, "$options": "i"}
     if source:
         query["source"] = source
-    feats: List[Dict[str, Any]] = []
+
+    feats: list[dict] = []
     cursor = MongoManager.db.feats.find(query).skip(skip).limit(limit)
     async for doc in cursor:
         feats.append(_serialize(doc))
@@ -37,7 +38,7 @@ async def list_categories():
     out = []
     for slug, meta in CATEGORY_MAP.items():
         # Support either a single code (legacy) or multiple codes.
-        codes: List[str]
+        codes: list[str]
         if "codes" in meta:
             codes = meta["codes"]
             query = {"category": {"$in": codes}}
@@ -63,9 +64,10 @@ async def get_category(slug: str):
     if not meta:
         raise HTTPException(status_code=404, detail="Unknown feat category")
     # Determine codes list
-    codes: List[str] = meta.get("codes") or [meta["code"]]
-    feats: List[Dict[str, Any]] = []
+    codes: list[str] = meta.get("codes") or [meta["code"]]
+    feats: list[dict] = []
     cursor = MongoManager.db.feats.find({"category": {"$in": codes}})
+    
     async for doc in cursor:
         feats.append(_serialize(doc))
     return {

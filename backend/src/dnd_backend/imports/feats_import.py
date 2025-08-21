@@ -24,6 +24,7 @@ async def import_feats():
                 print("No feats matched the criteria. Nothing inserted.")
             names = [f['name'] for f in feats_to_insert]
             categories = sorted(set(f['category'] for f in feats_to_insert))
+            
             return names + categories
     finally:
         MongoManager.close_database_connection()

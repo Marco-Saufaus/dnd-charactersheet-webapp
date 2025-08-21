@@ -22,6 +22,9 @@ async def import_languages():
                 await MongoManager.insert_data(languages_to_insert, COLLECTION_NAME)
             else:
                 print("No languages matched the criteria. Nothing inserted.")
-            return [l['name'] for l in languages_to_insert]
+            names = [l['name'] for l in languages_to_insert]
+            types = sorted(set(l['type'] for l in languages_to_insert))
+
+            return names + types
     finally:
         MongoManager.close_database_connection()

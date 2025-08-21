@@ -7,7 +7,7 @@ class Language(BaseModel):
     source: Optional[str] = None
     page: Optional[int] = None
     basicRules: Optional[bool] = None
+    type: Optional[str] = None
     
-
     class Config:
         populate_by_name = True
