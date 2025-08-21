@@ -35,8 +35,9 @@ def _query_for_category(slug: str, codes: list[str]) -> dict:
     # Default: exact match on 'type' against provided codes
     if slug == "magic":
         # Include magic item types: W, RG, RD, WD, GV, S, HA, MA, LA, M
+        # Match exact type token immediately followed by a pipe (e.g., "RG|XDMG"), avoiding prefix hits like "MNT|XPHB" or "SC|XPHB".
         return {"$or": [
-            {"type": {"$regex": r"^(W|RG|RD|WD|GV|S|HA|MA|LA|M)(\\b|\\|)", "$options": "i"}},
+            {"type": {"$regex": r"^(?:W|RG|RD|WD|GV|S|HA|MA|LA|M)(?=\|)", "$options": "i"}},
             {"type": {"$exists": False}},
             {"type": None},
             {"type": ""},
