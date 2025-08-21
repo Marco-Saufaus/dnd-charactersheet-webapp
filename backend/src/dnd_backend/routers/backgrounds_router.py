@@ -2,11 +2,11 @@ from fastapi import APIRouter, HTTPException
 from typing import Optional
 import re
 from dnd_backend.config.database import MongoManager
-from dnd_backend.models.background_model import Condition
+from dnd_backend.models.background_model import Background
 
 router = APIRouter(prefix="/backgrounds", tags=["backgrounds"])
 
-@router.get("/search", response_model=list[Condition])
+@router.get("/search", response_model=list[Background])
 async def list_backgrounds(q: Optional[str] = None, source: Optional[str] = None, skip: int = 0, limit: int = 50):
     query: dict = {}
     if q:

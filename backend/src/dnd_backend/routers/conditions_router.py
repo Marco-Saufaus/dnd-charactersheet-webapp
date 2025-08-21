@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from typing import Optional
 import re
 from dnd_backend.config.database import MongoManager
-from dnd_backend.models.background_model import Condition
+from dnd_backend.models.condition_model import Condition
 
 router = APIRouter(prefix="/conditions", tags=["conditions"])
 
