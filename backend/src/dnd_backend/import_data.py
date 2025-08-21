@@ -50,8 +50,6 @@ async def _run_import_tasks() -> dict:
     finally:
         MongoManager.close_database_connection()
 
-    return results
-
 
 def main() -> dict:  # pragma: no cover - thin wrapper
     """Synchronous entry point for Poetry script.
