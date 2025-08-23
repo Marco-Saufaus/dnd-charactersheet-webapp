@@ -6,6 +6,8 @@ from dnd_backend.imports.conditions_import import import_conditions
 from dnd_backend.imports.feats_import import import_feats
 from dnd_backend.imports.baseitems_import import import_baseitems
 from dnd_backend.imports.items_import import import_items
+from dnd_backend.imports.item_masteries_import import import_masteries
+from dnd_backend.imports.item_properties_import import import_properties
 from dnd_backend.imports.languages_import import import_languages
 from dnd_backend.imports.optionalfeatures_import import import_optionalfeatures
 from dnd_backend.imports.races_import import import_races
@@ -22,13 +24,15 @@ async def _run_import_tasks() -> dict:
     for invocation through the Poetry script entry point, preventing 'coroutine was
     never awaited' runtime warnings.
     """
-    (actions, backgrounds, conditions, feats, baseitems, items, languages, optionalfeatures, races, senses, skills, variants,) = await asyncio.gather(
+    (actions, backgrounds, conditions, feats, baseitems, items, masteries, properties, languages, optionalfeatures, races, senses, skills, variants,) = await asyncio.gather(
         import_actions(),
         import_backgrounds(),
         import_conditions(),
         import_feats(),
         import_baseitems(),
         import_items(),
+        import_masteries(),
+        import_properties(),
         import_languages(),
         import_optionalfeatures(),
         import_races(),
@@ -44,6 +48,8 @@ async def _run_import_tasks() -> dict:
         "feats": feats,
         "baseitems": baseitems,
         "items": items,
+        "masteries": masteries,
+        "properties": properties,
         "languages": languages,
         "optionalfeatures": optionalfeatures,
         "races": races,
