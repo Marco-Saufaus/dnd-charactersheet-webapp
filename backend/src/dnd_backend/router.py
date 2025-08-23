@@ -11,6 +11,7 @@ from dnd_backend.routers.baseitems_router import router as baseitem_router
 from dnd_backend.routers.items_router import router as items_router
 from dnd_backend.routers.item_masteries_router import router as item_masteries_router
 from dnd_backend.routers.item_properties_router import router as item_properties_router
+from dnd_backend.routers.item_group_router import router as item_group_router
 from dnd_backend.routers.language_router import router as languages_router
 from dnd_backend.routers.optionalfeatures_router import router as optionalfeatures_router
 from dnd_backend.routers.races_router import router as races_router
@@ -55,6 +56,7 @@ app.include_router(items_router)
 app.include_router(baseitem_router)
 app.include_router(item_masteries_router)
 app.include_router(item_properties_router)
+app.include_router(item_group_router)
 app.include_router(languages_router)
 app.include_router(optionalfeatures_router)
 app.include_router(races_router)
