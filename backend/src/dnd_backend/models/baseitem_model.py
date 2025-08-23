@@ -1,7 +1,7 @@
 from typing import Optional
 from pydantic import BaseModel, Field
 
-class Item(BaseModel):
+class BaseItem(BaseModel):
     id: str = Field(alias="_id")
     name: str
     source: Optional[str] = None
@@ -23,7 +23,6 @@ class Item(BaseModel):
     dmg2: Optional[str] = None
     dmgType: Optional[str] = None
     age: Optional[str] = None
-    baseItem: Optional[str] = None
 
 
     class Config:

@@ -10,6 +10,10 @@ CATEGORY_MAP: dict[str, dict] = {
     # General items
     "general": {"codes": ["G|XPHB", "FD|XPHB", "TAH|XPHB", "EXP|XDMG", "TG|XDMG", "TB|XDMG"], "label": "General Items"},
 
+    # Weapons and Armor (from base items now unified into items)
+    "weapons": {"codes": ["A|XPHB", "M|XPHB", "R|XPHB"], "label": "Weapons & Ammunition"},
+    "armor": {"codes": ["HA|XPHB", "MA|XPHB", "LA|XPHB", "S|XPHB"], "label": "Armor & Shields"},
+
     # Vehicles and mounts
     "vehicles": {"codes": ["AIR|XPHB", "VEH|XPHB", "SHP|XPHB"], "label": "Vehicles"},
     "mounts": {"codes": ["MNT|XPHB"], "label": "Mounts"},
@@ -18,7 +22,7 @@ CATEGORY_MAP: dict[str, dict] = {
     "focus": {"codes": ["SCF|XPHB"], "label": "Spellcasting Focus"},
 
     # Tools and kits
-    "tools": {"codes": ["AT|XPHB", "GS|XPHB", "T|XPHB"], "label": "Tools"},
+    "tools": {"codes": ["AT|XPHB", "GS|XPHB", "T|XPHB", "INS|XPHB"], "label": "Tools"},
 
     # Potions and Spellscrolls
     "potions": {"codes": ["P|XPHB"], "label": "Potions"},
@@ -74,6 +78,11 @@ async def list_categories():
         else:
             codes = [meta["code"]]
             query = _query_for_category(slug, codes)
+        # Ensure weapons/armor counts only include baseitems-origin docs, and magic excludes baseitems
+        if slug in {"weapons", "armor"}:
+            query = {"$and": [query, {"origin": "baseitems"}]}
+        elif slug == "magic":
+            query = {"$and": [query, {"origin": {"$ne": "baseitems"}}]}
         count = await MongoManager.db.items.count_documents(query)
         # Keep "code" field for backward compatibility when there is only one; also add "codes" consistently.
         payload = {
@@ -95,7 +104,14 @@ async def get_category(slug: str):
     # Determine codes list
     codes: list[str] = meta.get("codes") or [meta["code"]]
     items: list[dict] = []
-    cursor = MongoManager.db.items.find(_query_for_category(slug.lower(), codes))
+    # Build category query
+    q = _query_for_category(slug.lower(), codes)
+    # Special case: weapons/armor show only baseitems; magic excludes baseitems
+    if slug.lower() in {"weapons", "armor"}:
+        q = {"$and": [q, {"origin": "baseitems"}]}
+    elif slug.lower() == "magic":
+        q = {"$and": [q, {"origin": {"$ne": "baseitems"}}]}
+    cursor = MongoManager.db.items.find(q)
     
     async for doc in cursor:
         items.append(_serialize(doc))

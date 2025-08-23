@@ -430,6 +430,8 @@ async function renderFeatDetail(container) {
 
 const ITEM_CATEGORY_DISPLAY_TO_BACKEND = {
     "general-items": "general",
+    "weapons": "weapons",
+    "armor": "armor",
     "vehicles": "vehicles",
     "mounts": "mounts",
     "spellcasting-focus": "focus",
@@ -443,6 +445,8 @@ const ITEM_CATEGORY_DISPLAY_TO_BACKEND = {
 function backendToDisplayItemCategory(slug) {
     switch (slug) {
         case 'general': return 'general-items';
+    case 'weapons': return 'weapons';
+    case 'armor': return 'armor';
         case 'vehicles': return 'vehicles';
         case 'mounts': return 'mounts';
         case 'focus': return 'spellcasting-focus';
@@ -600,13 +604,48 @@ async function renderItemDetail(container) {
             return `<p class="item-stats">${parts.join(' • ')}</p>`;
         })();
 
+        // Build weapon/armor extras (damage, properties, mastery)
+    const extrasHtml = (() => {
+            const lines = [];
+            // Damage and type
+            const dmg1 = item.dmg1;
+            const dmgType = item.dmgType;
+            const dmgTypeText = damageTypeLabel(dmgType);
+            if (dmg1 && dmgTypeText) {
+                lines.push(`${escapeHtml(String(dmg1))} ${escapeHtml(dmgTypeText)}`);
+            } else if (dmg1) {
+                lines.push(`${escapeHtml(String(dmg1))}`);
+            }
+
+            // Properties (e.g., Versatile -> show dmg2 if present)
+            const props = Array.isArray(item.property) ? item.property.map(p => String(p)) : [];
+            const propCodes = props.map(p => (p.includes('|') ? p.split('|', 1)[0] : p).toUpperCase());
+            if (propCodes.includes('V') && item.dmg2) {
+                lines.push(`Versatile (${escapeHtml(String(item.dmg2))})`);
+            }
+
+            // Mastery (2024): array of like "Topple|XPHB"
+            const mastery = Array.isArray(item.mastery) ? item.mastery : [];
+            const masteryNames = mastery
+                .map(m => String(m))
+                .map(m => (m.includes('|') ? m.split('|', 1)[0] : m))
+                .filter(Boolean);
+            if (masteryNames.length) {
+                lines.push(`Mastery: ${escapeHtml(masteryNames.join(', '))}`);
+            }
+
+            if (!lines.length) return '';
+            return `<p class="item-combat">${lines.join('<br>')}</p>`;
+        })();
+
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{CATEGORY}}', (() => {
-                const rawTypeLabel = itemCategoryLabel(item.type ?? item.category) || '';
-                const typeLabel = rawTypeLabel
-                    ? rawTypeLabel.charAt(0).toUpperCase() + rawTypeLabel.slice(1).toLowerCase()
-                    : '';
+                const rawTypeCode = (item.type ?? item.category ?? '').toString();
+                const typeLabel = (() => {
+                    const base = itemCategoryLabel(rawTypeCode) || '';
+                    return base ? base.charAt(0).toUpperCase() + base.slice(1).toLowerCase() : '';
+                })();
                 // Base item display from baseItem (e.g., "chain mail|XPHB" -> "Chain Mail")
                 let baseItemText = '';
                 if (item.baseItem) {
@@ -620,13 +659,21 @@ async function renderItemDetail(container) {
                     ? rarityRaw.toLowerCase() : '';
                 const req = item.reqAttune ?? item.requiresAttunement ?? item.attunement;
                 const attuneSeg = req ? 'requires attunement' : '';
+                // Weapon/armor specific labels
+                const weaponCat = weaponCategoryText(item.weaponCategory);
+                const weaponKind = weaponKindFromType(rawTypeCode);
 
-                const left = typeLabel ? `${typeLabel}${baseItemText ? ` (${baseItemText})` : ''}` : '';
+                const leftParts = [];
+                if (weaponCat) leftParts.push(weaponCat);
+                if (weaponKind) leftParts.push(weaponKind);
+                // Fallback to typeLabel for non-weapons/armors
+                if (!leftParts.length && typeLabel) leftParts.push(`${typeLabel}${baseItemText ? ` (${baseItemText})` : ''}`);
+                const left = leftParts.join(', ');
                 const right = raritySeg ? `${raritySeg}${attuneSeg ? ` (${attuneSeg})` : ''}` : '';
                 const combined = [left, right].filter(Boolean).join(', ');
                 return combined ? `<p class="item-category"><strong>${escapeHtml(combined)}</strong></p>` : '';
             })())
-            .replace('{{STATS}}', statsHtml)
+            .replace('{{STATS}}', statsHtml + extrasHtml)
             .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
@@ -1259,6 +1306,50 @@ function itemCategoryLabel(code) {
 
     // Fallbacks: treat unknowns conservatively
     return '';
+}
+
+// Helpers for item detail labels
+function damageTypeLabel(code) {
+    if (!code) return '';
+    const c = String(code).trim().toUpperCase();
+    const MAP = {
+        A: 'Acid',
+        B: 'Bludgeoning',
+        C: 'Cold',
+        F: 'Fire',
+        O: 'Force',
+        L: 'Lightning',
+        N: 'Necrotic',
+        P: 'Piercing',
+        I: 'Poison',
+        Y: 'Psychic',
+        R: 'Radiant',
+        S: 'Slashing',
+        T: 'Thunder'
+    };
+    return MAP[c] || c.charAt(0) + c.slice(1).toLowerCase();
+}
+
+function weaponCategoryText(cat) {
+    if (!cat) return '';
+    const c = String(cat).trim().toLowerCase();
+    if (!c) return '';
+    // Common values: 'simple', 'martial'
+    return `${c.charAt(0).toUpperCase()}${c.slice(1)} weapon`;
+}
+
+function weaponKindFromType(typeCode) {
+    if (!typeCode) return '';
+    const raw = String(typeCode).trim().toUpperCase();
+    const c = raw.includes('|') ? raw.split('|', 1)[0] : raw;
+    switch (c) {
+        case 'M': return 'Melee weapon';
+        case 'R': return 'Ranged weapon';
+        case 'A':
+        case 'AF':
+            return 'Ammunition';
+        default: return '';
+    }
 }
 
 function languageCategoryLabel(code) {
