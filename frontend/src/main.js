@@ -177,7 +177,7 @@ async function renderActionDetail(container) {
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{TIME}}', escapeHtml(formatActionTime(item.time)) || '—')
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -240,7 +240,7 @@ async function renderBackgroundDetail(container) {
         const tpl = await loadTemplate('/src/templates/background-detail.html');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -303,7 +303,7 @@ async function renderConditionDetail(container) {
         const tpl = await loadTemplate('/src/templates/condition-detail.html');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -423,7 +423,7 @@ async function renderFeatDetail(container) {
                 const label = featCategoryLabel(item.category);
                 return label ? `<p class="feat-category"><strong>${escapeHtml(label)}</strong></p>` : '';
             })())
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -563,15 +563,32 @@ async function renderItemDetail(container) {
 
         // Load item detail card template and replace tokens
         const tpl = await loadTemplate('/src/templates/item-details.html');
-    // Build stats (value/weight) when available
+
+        // Helper to fetch a base item by name|SRC
+        async function fetchBaseItem(baseItemStr) {
+            if (!baseItemStr) return null;
+            let [name, src] = String(baseItemStr).split('|');
+            name = (name || '').trim();
+            src = (src || '').trim();
+            if (!name) return null;
+            // Try backend endpoint: /items/{name}?source={src}
+            let url = `http://localhost:8000/items/${encodeURIComponent(name)}`;
+            if (src) url += `?source=${encodeURIComponent(src)}`;
+            try {
+                const r = await fetch(url);
+                if (!r.ok) return null;
+                return await r.json();
+            } catch { return null; }
+        }
+
+        // Build stats (value/weight) when available
         const statsHtml = (() => {
             const parts = [];
-
             const v = item.value ?? item.cost ?? item.price;
             let valueText = '';
             const formatCopper = (n) => {
                 const cp = Number(n);
-                if (!Number.isFinite(cp)) return '';                
+                if (!Number.isFinite(cp)) return '';
                 if (cp % 100 === 0) return `${cp / 100} gp`;
                 if (cp % 10 === 0) return `${cp / 10} sp`;
                 return `${cp} cp`;
@@ -600,7 +617,6 @@ async function renderItemDetail(container) {
                 if (!/[.!?]$/.test(valueDisplay)) valueDisplay += '.'; // ensure trailing period
                 parts.push(`<span><strong>Value:</strong> ${escapeHtml(valueDisplay)}</span>`);
             }
-
             // weight can be number or object; support common shapes
             const w = item.weight ?? item.wt ?? item.weightNumber;
             if (w !== undefined && w !== null && w !== '') {
@@ -609,14 +625,52 @@ async function renderItemDetail(container) {
                     parts.push(`<span><strong>Weight:</strong> ${escapeHtml(String(wVal))} lb</span>`);
                 }
             }
-
             if (!parts.length) return '';
             return `<p class="item-stats">${parts.join(' • ')}</p>`;
         })();
 
-        // Build weapon/armor extras (damage, properties, mastery)
-    const extrasHtml = (() => {
+        // If baseItem, fetch and build its stats/extras
+        let baseItemStatsHtml = '';
+        let baseItemLinkHtml = '';
+        if (item.baseItem) {
+            const baseItem = await fetchBaseItem(item.baseItem);
+            if (baseItem) {
+                // Only show base AC if the magic item does not have its own AC
+                if ((item.ac == null || item.ac === '') && baseItem.ac != null && baseItem.ac !== '') {
+                    const typeRaw = (baseItem.type ?? '').toString().toUpperCase();
+                    const typeCode = typeRaw.includes('|') ? typeRaw.split('|', 1)[0] : typeRaw;
+                    let acDetail = '';
+                    if (((baseItem.armor && (typeCode === 'LA' || typeCode === 'MA' || typeCode === 'HA')) || typeCode === 'S')) {
+                        if (typeCode === 'LA') acDetail = `${baseItem.ac} + Dex`;
+                        else if (typeCode === 'MA') acDetail = `${baseItem.ac} + Dex (max 2)`;
+                        else if (typeCode === 'S') acDetail = `+${baseItem.ac}`;
+                        else acDetail = `${baseItem.ac}`;
+                    }
+                    if (acDetail) baseItemStatsHtml = `<p class=\"item-combat\">AC: ${escapeHtml(acDetail)}</p>`;
+                }
+                // Only the base item name is clickable, not the whole label
+                let baseName = (baseItem.name || '').replace(/\b\w/g, c => c.toUpperCase());
+                baseItemLinkHtml = `<a href=\"/items/${encodeURIComponent(baseName)}\" data-link>${escapeHtml(baseName)}</a>`;
+            }
+        }
+
+
+        // Build weapon/armor extras (damage, properties, mastery, armor AC)
+        const extrasHtml = (() => {
             const lines = [];
+            // Armor AC (LA/MA/HA)
+            try {
+                const typeRaw = (item.type ?? '').toString().toUpperCase();
+                const typeCode = typeRaw.includes('|') ? typeRaw.split('|', 1)[0] : typeRaw;
+                if (((item.armor && (typeCode === 'LA' || typeCode === 'MA' || typeCode === 'HA')) || typeCode === 'S') && item.ac != null && item.ac !== '') {
+                    let acDetail = '';
+                    if (typeCode === 'LA') acDetail = `: ${item.ac} + Dex`;
+                    else if (typeCode === 'MA') acDetail = `: ${item.ac} + Dex (max 2)`;
+                    else if (typeCode === 'S') acDetail = ` +${item.ac}`;
+                    else acDetail = `: ${item.ac}`; // HA
+                    lines.push(`AC${escapeHtml(String(acDetail))}`);
+                }
+            } catch { /* noop */ }
             // Damage and type
             const dmg1 = item.dmg1;
             const dmgType = item.dmgType;
@@ -630,8 +684,20 @@ async function renderItemDetail(container) {
             // Properties (e.g., Versatile -> show dmg2 if present)
             const props = Array.isArray(item.property) ? item.property.map(p => String(p)) : [];
             const propCodes = props.map(p => (p.includes('|') ? p.split('|', 1)[0] : p).toUpperCase());
+            let showedVersatile = false;
             if (propCodes.includes('V') && item.dmg2) {
                 lines.push(`Versatile (${escapeHtml(String(item.dmg2))})`);
+                showedVersatile = true;
+            }
+            // Show other weapon properties as a comma-separated list
+            if (propCodes.length) {
+                const names = Array.from(new Set(propCodes
+                    .map(propertyNameFromCode)
+                    .filter(Boolean)));
+                const filtered = showedVersatile ? names.filter(n => n.toLowerCase() !== 'versatile') : names;
+                if (filtered.length) {
+                    lines.push(filtered.join(', '));
+                }
             }
 
             // Mastery (2024): array of like "Topple|XPHB"
@@ -648,20 +714,112 @@ async function renderItemDetail(container) {
             return `<p class="item-combat">${lines.join('<br>')}</p>`;
         })();
 
+        // Fetch and render weapon property/mastery descriptions (details)
+        const detailsHtml = await (async () => {
+            const hasWeaponLike = !!(item.weapon || item.dmg1 || (Array.isArray(item.property) && item.property.length) || (Array.isArray(item.mastery) && item.mastery.length));
+            if (!hasWeaponLike) return '';
+
+            const rawProps = Array.isArray(item.property) ? item.property.map(p => String(p)) : [];
+            const propCodes = rawProps
+                .map(p => (p.includes('|') ? p.split('|', 1)[0] : p))
+                .map(p => p.trim().toUpperCase())
+                .filter(Boolean);
+            const unique = (arr) => Array.from(new Set(arr));
+            const propNames = unique(propCodes.map(propertyNameFromCode).filter(Boolean));
+
+            const masteryRaw = Array.isArray(item.mastery) ? item.mastery.map(m => String(m)) : [];
+            const masteryNames = unique(masteryRaw.map(m => (m.includes('|') ? m.split('|', 1)[0] : m).trim()).filter(Boolean));
+
+            const fetchSafe = async (url) => {
+                try {
+                    const r = await fetch(url);
+                    if (!r.ok) return null;
+                    return await r.json();
+                } catch {
+                    return null;
+                }
+            };
+
+            const propDetails = await Promise.all(propNames.map(n => fetchSafe(`http://localhost:8000/item-properties/${encodeURIComponent(n)}`)));
+            const masteryDetails = await Promise.all(masteryNames.map(n => fetchSafe(`http://localhost:8000/item-masteries/${encodeURIComponent(n)}`)));
+
+            const stripLeadingName = (html, name) => {
+                if (!html || !name) return html || '';
+                const escapedName = escapeHtml(name).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                const re = new RegExp(`^\\s*<p><strong>${escapedName}<\\/strong><\\/p>\\s*`, 'i');
+                return html.replace(re, '');
+            };
+
+            const propBlocks = (propDetails || [])
+                .filter(Boolean)
+                .map(d => {
+                    const title = `<p><strong>${escapeHtml(d.name)}</strong></p>`; // no source for properties
+                    const rawBody = renderEntries(d.entries ?? []) || '';
+                    const body = stripLeadingName(rawBody, d.name);
+                    return `<div class="item-prop">${title}${body}</div>`;
+                });
+
+            const masteryBlocks = (masteryDetails || [])
+                .filter(Boolean)
+                .map(d => {
+                    const title = `<p><strong>Mastery: ${escapeHtml(d.name)}</strong></p>`;
+                    const rawBody = renderEntries(d.entries ?? []) || '';
+                    const body = stripLeadingName(rawBody, d.name);
+                    return `<div class="item-mastery">${title}${body}</div>`;
+                });
+
+            if (!propBlocks.length && !masteryBlocks.length) return '';
+            // No section headers; list properties then masteries
+            return `<div class="item-feature-details">${propBlocks.join('')}${masteryBlocks.join('')}</div>`;
+        })();
+
+        // Compose type line for weapons (e.g., 'Martial weapon, melee weapon')
+        const rawTypeCode = (item.type ?? item.category ?? '').toString();
+        const weaponCat = weaponCategoryText(item.weaponCategory);
+        const weaponKind = weaponKindFromType(rawTypeCode);
+        let typeLine = '';
+        if (weaponCat || weaponKind) {
+            const typeParts = [];
+            if (weaponCat) typeParts.push(weaponCat);
+            if (weaponKind) typeParts.push(weaponKind);
+            typeLine = `<p class=\"item-type-line\">${typeParts.join(', ')}</p>`;
+        }
+
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{CATEGORY}}', (() => {
                 const rawTypeCode = (item.type ?? item.category ?? '').toString();
-                const typeLabel = (() => {
-                    const base = itemCategoryLabel(rawTypeCode) || '';
-                    return base ? base.charAt(0).toUpperCase() + base.slice(1).toLowerCase() : '';
-                })();
-                // Base item display from baseItem (e.g., "chain mail|XPHB" -> "Chain Mail")
-                let baseItemText = '';
-                if (item.baseItem) {
-                    let raw = String(item.baseItem).trim();
-                    if (raw.includes('|')) raw = raw.split('|', 1)[0];
-                    baseItemText = raw.replace(/\b\w/g, c => c.toUpperCase());
+                // For weapons, show 'Weapon (Greatsword)' as the main label
+                let categoryLabel = '';
+                if (item.weaponCategory && item.baseItem) {
+                    // Use clickable base item name if available
+                    let baseNameHtml = '';
+                    if (baseItemLinkHtml) {
+                        baseNameHtml = baseItemLinkHtml;
+                    } else if (item.baseItem) {
+                        let raw = String(item.baseItem).trim();
+                        if (raw.includes('|')) raw = raw.split('|', 1)[0];
+                        const baseName = raw.replace(/\b\w/g, c => c.toUpperCase());
+                        baseNameHtml = escapeHtml(baseName);
+                    }
+                    categoryLabel = `Weapon${baseNameHtml ? ` (${baseNameHtml})` : ''}`;
+                } else {
+                    // fallback to typeLabel
+                    const typeLabel = (() => {
+                        const base = itemCategoryLabel(rawTypeCode) || '';
+                        return base ? base.charAt(0).toUpperCase() + base.slice(1).toLowerCase() : '';
+                    })();
+                    if (baseItemLinkHtml) {
+                        categoryLabel = `${typeLabel} (${baseItemLinkHtml})`;
+                    } else {
+                        let baseItemText = '';
+                        if (item.baseItem) {
+                            let raw = String(item.baseItem).trim();
+                            if (raw.includes('|')) raw = raw.split('|', 1)[0];
+                            baseItemText = raw.replace(/\b\w/g, c => c.toUpperCase());
+                        }
+                        categoryLabel = `${typeLabel}${baseItemText ? ` (${escapeHtml(baseItemText)})` : ''}`;
+                    }
                 }
                 // Rarity + attunement
                 const rarityRaw = (item.rarity ?? '').toString().trim();
@@ -669,22 +827,16 @@ async function renderItemDetail(container) {
                     ? rarityRaw.toLowerCase() : '';
                 const req = item.reqAttune ?? item.requiresAttunement ?? item.attunement;
                 const attuneSeg = req ? 'requires attunement' : '';
-                // Weapon/armor specific labels
-                const weaponCat = weaponCategoryText(item.weaponCategory);
-                const weaponKind = weaponKindFromType(rawTypeCode);
-
-                const leftParts = [];
-                if (weaponCat) leftParts.push(weaponCat);
-                if (weaponKind) leftParts.push(weaponKind);
-                // Fallback to typeLabel for non-weapons/armors
-                if (!leftParts.length && typeLabel) leftParts.push(`${typeLabel}${baseItemText ? ` (${baseItemText})` : ''}`);
-                const left = leftParts.join(', ');
                 const right = raritySeg ? `${raritySeg}${attuneSeg ? ` (${attuneSeg})` : ''}` : '';
-                const combined = [left, right].filter(Boolean).join(', ');
-                return combined ? `<p class="item-category"><strong>${escapeHtml(combined)}</strong></p>` : '';
+                const combined = [categoryLabel, right].filter(Boolean).join(', ');
+                return combined ? `<p class=\"item-category\"><strong>${combined}</strong></p>` : '';
             })())
-            .replace('{{STATS}}', statsHtml + extrasHtml)
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            // Insert type line after category for weapons
+            .replace('{{TYPELINE}}', typeLine)
+            .replace('{{STATS}}', baseItemStatsHtml + statsHtml + extrasHtml)
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
+            // Move property/mastery details after main description
+            .replace('{{DETAILS}}', detailsHtml)
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -800,7 +952,7 @@ async function renderLanguageDetail(container) {
                 const label = languageCategoryLabel(item.type);
                 return label ? `<p class="language-category"><strong>${escapeHtml(label)}</strong></p>` : '';
             })())
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -909,7 +1061,7 @@ async function renderOptionalFeatureDetail(container) {
                 const label = optionalfeatureCategoryLabel(item.featureType);
                 return label ? `<p class="optionalfeature-category"><strong>${escapeHtml(label)}</strong></p>` : '';
             })())
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
     } catch (e) {
@@ -970,7 +1122,7 @@ async function renderRaceDetail(container) {
         const tpl = await loadTemplate('/src/templates/race-detail.html');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -1033,7 +1185,7 @@ async function renderSenseDetail(container) {
         const tpl = await loadTemplate('/src/templates/sense-detail.html');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -1097,7 +1249,7 @@ async function renderSkillDetail(container) {
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
                .replace('{{ABILITY}}', escapeHtml(abilityFullName(item.ability)))
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -1160,7 +1312,7 @@ async function renderVariantDetail(container) {
         const tpl = await loadTemplate('/src/templates/variant-detail.html');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -1222,7 +1374,7 @@ async function renderItemMasteryDetail(container) {
         const tpl = await loadTemplate('/src/templates/item-mastery-detail.html');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -1284,7 +1436,7 @@ async function renderItemPropertyDetail(container) {
         const tpl = await loadTemplate('/src/templates/item-property-detail.html');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '<em>No description</em>')
+            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -1559,13 +1711,19 @@ function formatInlineRefs(str) {
     return str.replace(refRegex, (_m, typeRaw, inner) => {
         const type = typeRaw.toLowerCase().trim();
         const parts = inner.split('|').map(p => p.trim());
-        const display = parts[0] || '';
+        let display = parts[0] || '';
         const source = parts[1] || '';
 
         // Special cases with plain-text formatting (no links)
         if (type === 'dc') {
             // e.g., "{@dc 15}" -> "DC15"
             return `DC${escapeHtml(display)}`;
+        }
+
+        // For itemProperty, map code to full name for display and link
+        if (type === 'itemproperty') {
+            const fullName = propertyNameFromCode(display) || display;
+            display = fullName;
         }
 
         const routeBase = resolveRefRouteBase(type);
@@ -1593,6 +1751,25 @@ function resolveRefRouteBase(type) {
         // Add more mappings as needed
         default: return '';
     }
+}
+
+// Map 5eTools weapon property codes to display names for lookup
+function propertyNameFromCode(code) {
+    const c = String(code || '').trim().toUpperCase();
+    if (!c) return '';
+    const MAP = {
+        'A': 'Ammunition',
+        'F': 'Finesse',
+        'H': 'Heavy',
+        'L': 'Light',
+        'LD': 'Loading',
+        'R': 'Reach',
+        'T': 'Thrown',
+        '2H': 'Two-Handed',
+        'V': 'Versatile',
+        'S': 'Special'
+    };
+    return MAP[c] || '';
 }
 
 // ---------------------------
