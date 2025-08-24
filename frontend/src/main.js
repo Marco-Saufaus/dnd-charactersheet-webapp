@@ -455,8 +455,8 @@ const ITEM_CATEGORY_DISPLAY_TO_BACKEND = {
 function backendToDisplayItemCategory(slug) {
     switch (slug) {
         case 'general': return 'general-items';
-    case 'weapons': return 'weapons';
-    case 'armor': return 'armor';
+        case 'weapons': return 'weapons';
+        case 'armor': return 'armor';
         case 'vehicles': return 'vehicles';
         case 'mounts': return 'mounts';
         case 'focus': return 'spellcasting-focus';
@@ -628,7 +628,7 @@ async function renderItemDetail(container) {
             if (!parts.length) return '';
             return `<p class="item-stats">${parts.join(' • ')}</p>`;
         })();
-
+            
         // If baseItem, fetch and build its stats/extras
         let baseItemStatsHtml = '';
         let baseItemLinkHtml = '';
@@ -785,6 +785,42 @@ async function renderItemDetail(container) {
             typeLine = `<p class=\"item-type-line\">${typeParts.join(', ')}</p>`;
         }
 
+        // Render description: if item.hasRefs, use item group; else use item's own entries
+        let descriptionHtml = '';
+        if (item.hasRefs) {
+            // Try to extract the referenced itemEntry name from the string, e.g. "{#itemEntry {name}|XDMG}"
+            let extractedName = '';
+            if (Array.isArray(item.entries) && item.entries.length > 0) {
+                for (const entry of item.entries) {
+                    if (typeof entry === 'string') {
+                        const match = entry.match(/\{#itemEntry ([^}|]+)(?:\|[^}]*)?}/);
+                        if (match && match[1]) {
+                            extractedName = match[1].trim();
+                            break;
+                        }
+                    }
+                }
+            }
+            if (extractedName) {
+                // Fetch the item group from the backend
+                try {
+                    const res = await fetch(`http://localhost:8000/item-groups/${encodeURIComponent(extractedName)}`);
+                    if (res.ok) {
+                        const group = await res.json();
+                        descriptionHtml = renderEntries(group.entries ?? []);
+                    } else {
+                        descriptionHtml = 'Item group not found';
+                    }
+                } catch (e) {
+                    descriptionHtml = 'Error loading item group';
+                }
+            } else {
+                descriptionHtml = 'no name found';
+            }
+        } else {
+            // Standard item: render its own entries
+            descriptionHtml = renderEntries(item.entries ?? []);
+        }
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{CATEGORY}}', (() => {
@@ -834,7 +870,7 @@ async function renderItemDetail(container) {
             // Insert type line after category for weapons
             .replace('{{TYPELINE}}', typeLine)
             .replace('{{STATS}}', baseItemStatsHtml + statsHtml + extrasHtml)
-            .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
+            .replace('{{DESCRIPTION}}', descriptionHtml)
             // Move property/mastery details after main description
             .replace('{{DETAILS}}', detailsHtml)
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
