@@ -14,7 +14,10 @@ from dnd_backend.imports.optionalfeatures_import import import_optionalfeatures
 from dnd_backend.imports.races_import import import_races
 from dnd_backend.imports.senses_import import import_senses
 from dnd_backend.imports.skills_import import import_skills
+from dnd_backend.imports.spells_import import import_spells
+from dnd_backend.imports.status_import import import_status
 from dnd_backend.imports.variants_import import import_variants
+
 
 
 async def _run_import_tasks() -> dict:
@@ -25,7 +28,7 @@ async def _run_import_tasks() -> dict:
     for invocation through the Poetry script entry point, preventing 'coroutine was
     never awaited' runtime warnings.
     """
-    (actions, backgrounds, conditions, feats, baseitems, items, masteries, properties, itemgroups, languages, optionalfeatures, races, senses, skills, variants,) = await asyncio.gather(
+    (actions, backgrounds, conditions, feats, baseitems, items, masteries, properties, itemgroups, languages, optionalfeatures, races, senses, skills, spells, status, variants,) = await asyncio.gather(
         import_actions(),
         import_backgrounds(),
         import_conditions(),
@@ -40,6 +43,8 @@ async def _run_import_tasks() -> dict:
         import_races(),
         import_senses(),
         import_skills(),
+        import_spells(),
+        import_status(),
         import_variants(),
     )
 
@@ -58,6 +63,8 @@ async def _run_import_tasks() -> dict:
         "races": races,
         "senses": senses,
         "skills": skills,
+        "spells": spells,
+        "status": status,
         "variants": variants,
     }
 
@@ -67,6 +74,16 @@ async def _run_import_tasks() -> dict:
         await MongoManager.overwrite_one("search_index", {"_id": "search_index"}, results)
     finally:
         MongoManager.close_database_connection()
+
+
+def get_conditions():
+    # Return all Status objects from the Conditions collection
+    return []
+
+
+def get_condition_by_name(name: str):
+    # Return a Status object by name from the Conditions collection
+    return None
 
 
 def main() -> dict:

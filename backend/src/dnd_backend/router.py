@@ -17,7 +17,10 @@ from dnd_backend.routers.optionalfeatures_router import router as optionalfeatur
 from dnd_backend.routers.races_router import router as races_router
 from dnd_backend.routers.senses_router import router as senses_router
 from dnd_backend.routers.skills_router import router as skills_router
+from dnd_backend.routers.spells_router import router as spells_router
+from dnd_backend.routers.status_router import router as status_router
 from dnd_backend.routers.variants_router import router as variants_router
+
 
 app = FastAPI(
     title="D&D Character Sheet API",
@@ -62,5 +65,6 @@ app.include_router(optionalfeatures_router)
 app.include_router(races_router)
 app.include_router(senses_router)
 app.include_router(skills_router)
+app.include_router(spells_router)
+app.include_router(status_router)
 app.include_router(variants_router)
-
