@@ -2,6 +2,7 @@ import asyncio
 from dnd_backend.config.database import MongoManager
 from dnd_backend.imports.actions_import import import_actions
 from dnd_backend.imports.backgrounds_import import import_backgrounds
+from dnd_backend.imports.bestiary_import import import_bestiary
 from dnd_backend.imports.conditions_import import import_conditions
 from dnd_backend.imports.feats_import import import_feats
 from dnd_backend.imports.baseitems_import import import_baseitems
@@ -28,9 +29,10 @@ async def _run_import_tasks() -> dict:
     for invocation through the Poetry script entry point, preventing 'coroutine was
     never awaited' runtime warnings.
     """
-    (actions, backgrounds, conditions, feats, baseitems, items, masteries, properties, itemgroups, languages, optionalfeatures, races, senses, skills, spells, status, variants,) = await asyncio.gather(
+    (actions, backgrounds, bestiary, conditions, feats, baseitems, items, masteries, properties, itemgroups, languages, optionalfeatures, races, senses, skills, spells, status, variants,) = await asyncio.gather(
         import_actions(),
         import_backgrounds(),
+        import_bestiary(),
         import_conditions(),
         import_feats(),
         import_baseitems(),
@@ -51,6 +53,7 @@ async def _run_import_tasks() -> dict:
     results: dict = {
         "actions": actions,
         "backgrounds": backgrounds,
+        "bestiary": bestiary,
         "conditions": conditions,
         "feats": feats,
         "baseitems": baseitems,
