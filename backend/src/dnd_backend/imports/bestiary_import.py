@@ -9,8 +9,6 @@ def matches_criteria(bestiary: dict) -> bool:
     source: str = bestiary.get("source")
     if source == "XPHB":
         return True
-    if source == "DMG" and bestiary.get("basicRules") is True:
-        return True
     return False
 
 async def import_bestiary() -> list[dict]:
@@ -18,7 +16,7 @@ async def import_bestiary() -> list[dict]:
     try:
         with open(BESTIARY_JSON_PATH, encoding="utf-8") as f:
             data: dict = json.load(f)
-            bestiary_raw = data.get("bestiary", [])
+            bestiary_raw = data.get("monster", [])
             bestiary: list[dict] = list(bestiary_raw)
             bestiary_to_insert: list[dict] = [b for b in bestiary if matches_criteria(b)]
             if bestiary_to_insert:
