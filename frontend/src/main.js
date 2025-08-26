@@ -27,6 +27,11 @@ function router() {
     } else if (path.startsWith('/backgrounds/')) {
         renderBackgroundDetail(container);
 
+    } else if (path === '/bestiary') {
+        renderBestiaryList(container);
+    } else if (path.startsWith('/bestiary/')) {
+        renderBestiaryDetail(container);    
+
     } else if (path === '/conditions') {
         renderConditionsList(container);
     } else if (path.startsWith('/conditions/')) {
@@ -249,6 +254,172 @@ async function renderBackgroundDetail(container) {
         const el = document.getElementById('background-detail');
         if (el) el.textContent = 'Error loading background';
     }
+}
+
+// ---------------------------
+// Bestiary
+// ---------------------------
+
+async function renderBestiaryList(container) {
+    container.innerHTML = await loadTemplate('/src/templates/bestiary.html');
+    try {
+        const response = await fetch('http://localhost:8000/bestiary/search');
+        const bestiary = await response.json();
+
+        const tbody = document.querySelector('#bestiary-table tbody');
+        if (!tbody) return;
+        tbody.innerHTML = '';
+
+        if (!Array.isArray(bestiary) || bestiary.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="2">No bestiary entries found</td></tr>';
+            return;
+        }
+
+        bestiary.forEach(b => {
+            const row = document.createElement('tr');
+            const src = formatSourceWithPage(b.source, b.page);
+            row.innerHTML = `
+        <td><a href="/bestiary/${b.name}" data-link>${b.name ?? ''}</a></td>
+        <td>${src}</td>
+      `;
+            tbody.appendChild(row);
+        });
+    } catch (error) {
+        const tbody = document.querySelector('#bestiary-table tbody');
+        if (tbody) {
+            tbody.innerHTML = '<tr><td colspan="2">Error loading bestiary</td></tr>';
+        }
+    }
+}
+
+async function renderBestiaryDetail(container) {
+    const id = window.location.pathname.split('/').pop();
+    container.innerHTML = `
+    <div id="bestiary-detail">Loading…</div>
+  `;
+    try {
+        const res = await fetch(`http://localhost:8000/bestiary/${id}`);
+        if (!res.ok) throw new Error('Not found');
+        const item = await res.json();
+        const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+        const el = document.getElementById('bestiary-detail');
+
+        // Load bestiary detail card template and replace tokens
+        const tpl = await loadTemplate('/src/templates/bestiary-detail.html');
+        const html = tpl
+            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+            .replace('{{DESCRIPTION}}', renderBestiaryDescription(item))
+            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+        el.innerHTML = html;
+
+    } catch (e) {
+        console.error('Error loading bestiary:', e);
+        const el = document.getElementById('bestiary-detail');
+        if (el) el.textContent = 'Error loading bestiary';
+    }
+}
+
+function renderBestiaryDescription(entry) {
+    if (!entry) return '';
+    // Stat block fields
+    // Helper maps
+    const SIZE_MAP = {
+        't': 'Tiny',
+        's': 'Small',
+        'm': 'Medium',
+        'l': 'Large',
+        'h': 'Huge',
+        'g': 'Gargantuan',
+    };
+    const ALIGNMENT_MAP = {
+        'l': 'Lawful',
+        'n': 'Neutral',
+        'c': 'Chaotic',
+        'g': 'Good',
+        'e': 'Evil',
+        'u': 'Unaligned',
+    };
+    // Capitalize type
+    function capitalize(str) {
+        if (!str) return '';
+        return str.charAt(0).toUpperCase() + str.slice(1);
+    }
+    // Size
+    let sizeStr = '';
+    if (Array.isArray(entry.size)) {
+        const mapped = entry.size.map(s => SIZE_MAP[s.toLowerCase()] || capitalize(s));
+        if (mapped.length === 1) {
+            sizeStr = mapped[0];
+        } else if (mapped.length === 2) {
+            sizeStr = mapped.join(' or ');
+        } else if (mapped.length > 2) {
+            sizeStr = mapped.slice(0, -1).join(', ') + ', or ' + mapped[mapped.length - 1];
+        } else {
+            sizeStr = '';
+        }
+    } else if (entry.size) {
+        sizeStr = SIZE_MAP[String(entry.size).toLowerCase()] || capitalize(entry.size);
+    }
+    // Type
+    let typeStr = '';
+    if (entry.type) {
+        typeStr = capitalize(entry.type);
+    }
+    // Alignment
+    let alignmentStr = '';
+    if (entry.alignment) {
+        alignmentStr = ALIGNMENT_MAP[String(entry.alignment).toLowerCase()] || capitalize(entry.alignment);
+    }
+    // Compose type line
+    const type = [sizeStr + " " + typeStr + ", " + alignmentStr];
+    const ac = Array.isArray(entry.ac) ? entry.ac.map(a => a.special || a.ac || a).join(', ') : entry.ac;
+    const hp = typeof entry.hp === 'object' ? (entry.hp.special || entry.hp.average || '') : entry.hp;
+    const speed = (() => {
+        if (!entry.speed) return '';
+        if (typeof entry.speed === 'object') {
+            const entries = Object.entries(entry.speed).filter(([k, v]) => k !== 'canHover' && v);
+            // If only walk is present, just show the number
+            if (entries.length === 1 && entries[0][0] === 'walk') {
+                const v = entries[0][1];
+                if (typeof v === 'object' && v.number !== undefined) {
+                    return v.number;
+                } else {
+                    return v;
+                }
+            }
+            // Otherwise, show all modes
+            return entries
+                .map(([k, v]) => `${k}: ${typeof v === 'object' ? v.number + (v.condition ? ' ' + v.condition : '') : v}`)
+                .join(', ');
+        }
+        return entry.speed;
+    })();
+    const abilities = ['str','dex','con','int','wis','cha'].map(a => `<td><strong>${a.toUpperCase()}</strong><br>${entry[a] ?? ''}</td>`).join('');
+    const senses = entry.senses?.join?.(', ') || entry.senses;
+    const languages = entry.languages?.join?.(', ') || entry.languages;
+    const immunities = entry.immune?.join?.(', ') || entry.immune;
+
+    // Traits and actions
+    const renderSection = (arr, label) => {
+        if (!Array.isArray(arr) || !arr.length) return '';
+        return `<h4>${label}</h4>` + arr.map(t =>
+            `<div class="bestiary-section"><strong>${escapeHtml(t.name ?? '')}.</strong> ${renderEntries(t.entries ?? [])}</div>`
+        ).join('');
+    };
+
+    return `
+        <div class="bestiary-statblock">
+            <p>${escapeHtml(type)}</p>
+            <p><strong>AC</strong> ${escapeHtml(ac ?? '')}</p>
+            <p><strong>HP</strong> ${escapeHtml(hp ?? '')}</p>
+            <p><strong>Speed</strong> ${escapeHtml(speed ?? '')} ft.</p>
+            <table class="bestiary-abilities"><tr>${abilities}</tr></table>
+            <p><strong>Senses:</strong> ${escapeHtml(senses ?? '')} <strong>Languages:</strong> ${escapeHtml(languages ?? '')}</p>
+            ${immunities ? `<p><strong>Immunities:</strong> ${escapeHtml(immunities)}</p>` : ''}
+        </div>
+        ${renderSection(entry.trait, 'Traits')}
+        ${renderSection(entry.action, 'Actions')}
+    `;
 }
 
 // ---------------------------
@@ -550,6 +721,43 @@ async function renderItemsCategory(container, backendSlug) {
 }
 
 async function renderItemDetail(container) {
+        // Insert plain text if item or baseItem is in a list
+        function getSpecialText(item, baseItem) {
+            const namesWithTest = [
+                'Padded Armor',
+                'Scale Mail',
+                'Half Plate Armor',
+                'Ring Mail',
+                'Chain Mail',
+                'Splint Armor',
+                'Plate Armor'
+            ];
+            if (!item) return '';
+            const result = [];
+            // Stealth disadvantage line
+            if (namesWithTest.includes(item.name)) {
+                result.push('The wearer has {@variantrule Disadvantage|XPHB} on Dexterity ({@skill Stealth}) checks.');
+            } else if (baseItem && namesWithTest.includes(baseItem.name)) {
+                result.push('The wearer has {@variantrule Disadvantage|XPHB} on Dexterity ({@skill Stealth}) checks.');
+            }
+
+            // Speed reduction line for specific armors
+            const speedReductionMap = {
+                'Plate Armor': 15,
+                'Splint Armor': 15,
+                'Chain Mail': 13
+            };
+            let strengthReq = null;
+            if (speedReductionMap[item.name]) {
+                strengthReq = speedReductionMap[item.name];
+            } else if (baseItem && speedReductionMap[baseItem.name]) {
+                strengthReq = speedReductionMap[baseItem.name];
+            }
+            if (strengthReq) {
+                result.push(`If the wearer has a Strength score lower than ${strengthReq}, their speed is reduced by 10 feet.`);
+            }
+            return result.length ? result : '';
+        }
     const id = window.location.pathname.split('/').pop();
     container.innerHTML = `
     <div id="item-detail">Loading…</div>
@@ -632,11 +840,12 @@ async function renderItemDetail(container) {
         // If baseItem, fetch and build its stats/extras
         let baseItemStatsHtml = '';
         let baseItemLinkHtml = '';
+        let baseItem = null;
         if (item.baseItem) {
-            const baseItem = await fetchBaseItem(item.baseItem);
+            baseItem = await fetchBaseItem(item.baseItem);
             if (baseItem) {
                 // Only show base AC if the magic item does not have its own AC
-                if ((item.ac == null || item.ac === '') && baseItem.ac != null && baseItem.ac !== '') {
+                if (baseItem.ac != null && baseItem.ac !== '') {
                     const typeRaw = (baseItem.type ?? '').toString().toUpperCase();
                     const typeCode = typeRaw.includes('|') ? typeRaw.split('|', 1)[0] : typeRaw;
                     let acDetail = '';
@@ -821,7 +1030,8 @@ async function renderItemDetail(container) {
             // Standard item: render its own entries
             descriptionHtml = renderEntries(item.entries ?? []);
         }
-        const html = tpl
+
+        const html = tpl 
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{CATEGORY}}', (() => {
                 const rawTypeCode = (item.type ?? item.category ?? '').toString();
@@ -869,10 +1079,12 @@ async function renderItemDetail(container) {
             })())
             // Insert type line after category for weapons
             .replace('{{TYPELINE}}', typeLine)
-            .replace('{{STATS}}', baseItemStatsHtml + statsHtml + extrasHtml)
+            .replace('{{STATS}}', baseItemStatsHtml + extrasHtml + statsHtml)
             .replace('{{DESCRIPTION}}', descriptionHtml)
             // Move property/mastery details after main description
             .replace('{{DETAILS}}', detailsHtml)
+            // Insert special text between details and source
+            .replace('{{SPECIALTEXT}}', renderEntries(getSpecialText(item, baseItem)))
             .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
         el.innerHTML = html;
 
@@ -2061,8 +2273,8 @@ function formatInlineRefs(str) {
 function resolveRefRouteBase(type) {
     switch (type) {
         case 'item': return 'items';
-    case 'itemproperty': return 'item-properties';
-    case 'itemmastery': return 'item-masteries';
+        case 'itemproperty': return 'item-properties';
+        case 'itemmastery': return 'item-masteries';
         case 'feat': return 'feats';
         case 'spell': return 'spells';
         case 'background': return 'backgrounds';
