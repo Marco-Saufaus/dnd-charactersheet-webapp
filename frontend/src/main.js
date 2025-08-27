@@ -363,7 +363,20 @@ function renderBestiaryDescription(entry) {
     // Type
     let typeStr = '';
     if (entry.type) {
-        typeStr = capitalize(entry.type);
+        if (typeof entry.type === 'string') {
+            typeStr = capitalize(entry.type);
+        } else if (typeof entry.type === 'object') {
+            // Handle {type: {choose: [...]}} or similar
+            if (Array.isArray(entry.type.choose)) {
+                typeStr = entry.type.choose.map(capitalize).join(' or ');
+            } else if (entry.type.type && Array.isArray(entry.type.type.choose)) {
+                typeStr = entry.type.type.choose.map(capitalize).join(' or ');
+            } else if (entry.type.type && typeof entry.type.type === 'string') {
+                typeStr = capitalize(entry.type.type);
+            } else {
+                typeStr = '';
+            }
+        }
     }
     // Alignment
     let alignmentStr = '';
@@ -382,15 +395,40 @@ function renderBestiaryDescription(entry) {
             if (entries.length === 1 && entries[0][0] === 'walk') {
                 const v = entries[0][1];
                 if (typeof v === 'object' && v.number !== undefined) {
-                    return v.number;
+                    return `${v.number} ft.`;
                 } else {
-                    return v;
+                    return `${v} ft.`;
                 }
             }
             // Otherwise, show all modes
-            return entries
-                .map(([k, v]) => `${k}: ${typeof v === 'object' ? v.number + (v.condition ? ' ' + v.condition : '') : v}`)
-                .join(', ');
+            function renderSpeedMode(label, v) {
+                let num = '';
+                let cond = '';
+                if (typeof v === 'object') {
+                    num = v.number !== undefined ? v.number : '';
+                    cond = v.condition ? ` ${v.condition}` : '';
+                } else {
+                    num = v;
+                }
+                // Always add 'ft.' after the number
+                let numFt = num !== '' ? `${num} ft.` : '';
+                return `${label}${label ? ' ' : ''}${numFt}${cond}`.trim();
+            }
+            if (entries.length === 1) {
+                return entries
+                    .map(([k, v]) => {
+                        let label = k.capitalize();
+                        return renderSpeedMode(label, v);
+                    })
+                    .join(', ');
+            } else {
+                return entries
+                    .map(([k, v]) => {
+                        let label = k === 'walk' ? '' : k.charAt(0).toUpperCase() + k.slice(1);
+                        return renderSpeedMode(label, v);
+                    })
+                    .join(', ');
+            }
         }
         return entry.speed;
     })();
@@ -412,7 +450,7 @@ function renderBestiaryDescription(entry) {
             <p>${escapeHtml(type)}</p>
             <p><strong>AC</strong> ${escapeHtml(ac ?? '')}</p>
             <p><strong>HP</strong> ${escapeHtml(hp ?? '')}</p>
-            <p><strong>Speed</strong> ${escapeHtml(speed ?? '')} ft.</p>
+            <p><strong>Speed</strong> ${escapeHtml(speed ?? '')}</p>
             <table class="bestiary-abilities"><tr>${abilities}</tr></table>
             <p><strong>Senses:</strong> ${escapeHtml(senses ?? '')} <strong>Languages:</strong> ${escapeHtml(languages ?? '')}</p>
             ${immunities ? `<p><strong>Immunities:</strong> ${escapeHtml(immunities)}</p>` : ''}
