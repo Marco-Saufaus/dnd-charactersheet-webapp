@@ -1,3 +1,8 @@
+// Capitalize the first letter of each comma-separated word in a string
+    function capitalizeCommaSeparated(str) {
+        if (typeof str !== 'string') return str;
+        return str.split(', ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
+    }
 import './style.css'
 
 // ---------------------------
@@ -367,10 +372,16 @@ function renderBestiaryDescription(entry) {
             typeStr = capitalize(entry.type);
         } else if (typeof entry.type === 'object') {
             // Handle {type: {choose: [...]}} or similar
+            function joinWithCommasAndOr(arr) {
+                if (!Array.isArray(arr) || arr.length === 0) return '';
+                if (arr.length === 1) return capitalize(arr[0]);
+                if (arr.length === 2) return capitalize(arr[0]) + ' or ' + capitalize(arr[1]);
+                return arr.slice(0, -2).map(capitalize).join(', ') + (arr.length > 2 ? ', ' : '') + capitalize(arr[arr.length-2]) + ' or ' + capitalize(arr[arr.length-1]);
+            }
             if (Array.isArray(entry.type.choose)) {
-                typeStr = entry.type.choose.map(capitalize).join(' or ');
+                typeStr = joinWithCommasAndOr(entry.type.choose);
             } else if (entry.type.type && Array.isArray(entry.type.type.choose)) {
-                typeStr = entry.type.type.choose.map(capitalize).join(' or ');
+                typeStr = joinWithCommasAndOr(entry.type.type.choose);
             } else if (entry.type.type && typeof entry.type.type === 'string') {
                 typeStr = capitalize(entry.type.type);
             } else {
@@ -385,8 +396,8 @@ function renderBestiaryDescription(entry) {
     }
     // Compose type line
     const type = [sizeStr + " " + typeStr + ", " + alignmentStr];
-    const ac = Array.isArray(entry.ac) ? entry.ac.map(a => a.special || a.ac || a).join(', ') : entry.ac;
-    const hp = typeof entry.hp === 'object' ? (entry.hp.special || entry.hp.average || '') : entry.hp;
+    let ac = Array.isArray(entry.ac) ? entry.ac.map(a => a.special || a.ac || a).join(', ') : entry.ac;
+    let hp = typeof entry.hp === 'object' ? (entry.hp.special || entry.hp.average || '') : entry.hp;
     const speed = (() => {
         if (!entry.speed) return '';
         if (typeof entry.speed === 'object') {
@@ -432,10 +443,339 @@ function renderBestiaryDescription(entry) {
         }
         return entry.speed;
     })();
-    const abilities = ['str','dex','con','int','wis','cha'].map(a => `<td><strong>${a.toUpperCase()}</strong><br>${entry[a] ?? ''}</td>`).join('');
-    const senses = entry.senses?.join?.(', ') || entry.senses;
-    const languages = entry.languages?.join?.(', ') || entry.languages;
-    const immunities = entry.immune?.join?.(', ') || entry.immune;
+    // Render ability table with name, score, mod, save in vertical layout
+    function abilityMod(score) {
+        if (typeof score !== 'number') score = Number(score);
+        if (!Number.isFinite(score)) return '';
+        const mod = Math.floor((score - 10) / 2);
+        return (mod >= 0 ? '+' : '') + mod;
+    }
+    // Try to get save values from entry.saves or entry.savingThrowForced
+    const saveObj = entry.saves || entry.savingThrowForced || {};
+    function getSave(ability, score) {
+        if (saveObj && typeof saveObj === 'object' && saveObj[ability] != null) {
+            return (saveObj[ability] >= 0 ? '+' : '') + saveObj[ability];
+        }
+        return abilityMod(score);
+    }
+    // Helper to build a row for a set of abilities, with cell classes for styling
+    function buildAbilityRow(abilities, rowClass) {
+        return abilities.map(a => {
+            const label = a.toUpperCase();
+            const score = entry[a] ?? '';
+            const mod = abilityMod(score);
+            const save = getSave(a, score);
+            return `
+                <td class="cell-ability ${rowClass}"><strong>${label}</strong></td>
+                <td class="cell-abilityscore ${rowClass}">${score}</td>
+                <td class="cell-mod ${rowClass}">${mod}</td>
+                <td class="cell-save ${rowClass}">${save}</td>
+            `;
+        }).join('');
+    }
+    const abilities = `
+        <table class="bestiary-abilities-vertical">
+            <thead>
+                <tr>
+                    <th></th><th></th><th>MOD</th><th>SAVE</th>
+                    <th></th><th></th><th>MOD</th><th>SAVE</th>
+                    <th></th><th></th><th>MOD</th><th>SAVE</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="row-1">
+                    ${buildAbilityRow(['str','dex','con'], 'row-1')}
+                </tr>
+                <tr class="row-2">
+                    ${buildAbilityRow(['int','wis','cha'], 'row-2')}
+                </tr>
+            </tbody>
+        </table>
+    `;
+    let senses = capitalizeCommaSeparated(entry.senses?.join?.(', ') || entry.senses);
+    if (entry.passive != null && entry.passive !== '') {
+        senses = senses ? `${senses}, passive Perception ${entry.passive}` : `Passive Perception ${entry.passive}`;
+    }
+    let languages = capitalizeCommaSeparated(entry.languages?.join?.(', ') || entry.languages);
+    let immunities = '';
+    if (Array.isArray(entry.conditionImmune) && entry.conditionImmune.length) {
+        immunities = entry.conditionImmune
+            .map(c => renderEntries(`{@Condition ${c.charAt(0).toUpperCase() + c.slice(1)}|XPHB}`).replace(/^<p>|<\/p>$/g, ''))
+            .join(', ');
+    }
+    let resistances = capitalizeCommaSeparated(entry.resist?.join?.(', ') || entry.resist);
+    // Build spell level dropdown if available
+    let spellLevelDropdown = '';
+    let classLevelDropdown = '';
+    if (entry.summonedBySpellLevel) {
+        // Get all levels above the highest in summonedBySpellLevel, up to 9
+        const levels = Array.isArray(entry.summonedBySpellLevel) ? entry.summonedBySpellLevel.map(Number) : [Number(entry.summonedBySpellLevel)];
+        const maxLevel = Math.max(...levels);
+        const allLevels = [];
+        for (let lvl = maxLevel; lvl <= 9; lvl++) {
+            allLevels.push(lvl);
+        }
+        spellLevelDropdown = `<select class="spell-level-select">
+            <option value="" selected>-</option>
+            ${allLevels.map(lvl => `<option value='${escapeHtml(String(lvl))}'${(lvl === entry.spellLevel || lvl === entry.spell_level) ? ' selected' : ''}>${escapeHtml(String(lvl))}</option>`).join('')}
+        </select>`;
+        // Add delegated event listener if not already present
+        if (!window._spellLevelSelectListenerAdded) {
+            document.addEventListener('change', function(e) {
+                if (e.target && e.target.classList && e.target.classList.contains('spell-level-select')) {
+                    if (e.target.value === '') {
+                        // Re-render the base statblock by reloading the current route
+                        router();
+                        return;
+                    }
+                    // Find the closest statblock container
+                    const statblock = e.target.closest('.bestiary-statblock');
+                    if (!statblock) {
+                        return;
+                    }
+                    // Get the creature name from the URL path
+                    const pathParts = window.location.pathname.split('/').filter(Boolean);
+                    let creatureName = '';
+                    if (pathParts.length > 1 && pathParts[0].toLowerCase() === 'bestiary') {
+                        creatureName = decodeURIComponent(pathParts[1] || '');
+                    }
+                    if (creatureName.toLowerCase().includes("celestial spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 11 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC + ' + 2 (Defender only)';
+                        }
+                        if (hpP) {
+                            const newHP = 40 + 10 * (Number(e.target.value || 0) - 5);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("aberrant spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 11 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHP = 40 + 10 * (Number(e.target.value || 0) - 4);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("animated object")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        pass
+                    }
+                    else if (creatureName.toLowerCase().includes("aberrant spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 11 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHP = 40 + 10 * (Number(e.target.value || 0) - 4);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("bestial spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 11 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHPAir = 20 + 5 * (Number(e.target.value || 0) - 2);
+                            const newHPLand = 30 + 5 * (Number(e.target.value || 0) - 2);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHPAir + ' (Air only) or ' + newHPLand + ' (Land and Water only)';
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("construct spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 13 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHP = 40 + 15 * (Number(e.target.value || 0) - 4);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("draconic spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 14 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHP = 50 + 10 * (Number(e.target.value || 0) - 5);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("elemental spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 11 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHP = 50 + 10 * (Number(e.target.value || 0) - 4);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("fey spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 12 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHP = 30 + 10 * (Number(e.target.value || 0) - 3);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("fiendish spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 12 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHPDemon = 50 + 15 * (Number(e.target.value || 0) - 6);
+                            const newHPDevil = 40 + 15 * (Number(e.target.value || 0) - 6);
+                            const newHPYugoloth = 60 + 15 * (Number(e.target.value || 0) - 6);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHPDemon + ' (Demon only) or ' + newHPDevil + ' (Devil only) or ' + newHPYugoloth + ' (Yugoloth only)';
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("giant insect")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 11 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHP = 30 + 10 * (Number(e.target.value || 0) - 4);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("otherworldly steed")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 10 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHP = 5 + 10 * (Number(e.target.value || 0));
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    else if (creatureName.toLowerCase().includes("undead spirit")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (acP) {
+                            const newAC = 11 + Number(e.target.value || 0);
+                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                        }
+                        if (hpP) {
+                            const newHPGhostly = 30 + 10 * (Number(e.target.value || 0) - 3);
+                            const newHPSkeletal = 20 + 10 * (Number(e.target.value || 0) - 3);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHPGhostly + ' (Ghostly and Putrid only) or ' + newHPSkeletal + ' (Skeletal only)';
+                        }
+                    }
+                }
+            });
+            window._spellLevelSelectListenerAdded = true;
+        }
+    }
+    else if (entry.spellLevel ?? entry.spell_level) {
+        spellLevelDropdown = `<select class="spell-level-select"><option selected>${escapeHtml(String(entry.spellLevel ?? entry.spell_level))}</option></select>`;
+    }
+    else if (entry.summonedByClass) {
+        // Get all levels above the highest in summonedBySpellLevel, up to 9
+        const levels = Array.isArray(entry.summonedByClassLevel) ? entry.summonedByClassLevel.map(Number) : [Number(entry.summonedByClassLevel)];
+        const maxLevel = 1;
+        const allLevels = [];
+        for (let lvl = maxLevel; lvl <= 20; lvl++) {
+            allLevels.push(lvl);
+        }
+        classLevelDropdown = `<select class="class-level-select">
+            <option value="" selected>-</option>
+            ${allLevels.map(lvl => `<option value='${escapeHtml(String(lvl))}'${(lvl === entry.classLevel || lvl === entry.class_level) ? ' selected' : ''}>${escapeHtml(String(lvl))}</option>`).join('')}
+        </select>`;
+        // Add delegated event listener if not already present
+        if (!window._classLevelSelectListenerAdded) {
+            document.addEventListener('change', function(e) {
+                if (e.target && e.target.classList && e.target.classList.contains('class-level-select')) {
+                    if (e.target.value === '') {
+                        // Re-render the base statblock by reloading the current route
+                        router();
+                        return;
+                    }
+                    // Find the closest statblock container
+                    const statblock = e.target.closest('.bestiary-statblock');
+                    if (!statblock) {
+                        return;
+                    }
+                    // Get the creature name from the URL path
+                    const pathParts = window.location.pathname.split('/').filter(Boolean);
+                    let creatureName = '';
+                    if (pathParts.length > 1 && pathParts[0].toLowerCase() === 'bestiary') {
+                        creatureName = decodeURIComponent(pathParts[1] || '');
+                    }
+                    if (creatureName.toLowerCase().includes("beast of the land")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (hpP) {
+                            const newHP = 5 + 5 * Number(e.target.value || 0);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    if (creatureName.toLowerCase().includes("beast of the sea")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (hpP) {
+                            const newHP = 5 + 5 * Number(e.target.value || 0);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                    if (creatureName.toLowerCase().includes("beast of the sky")) {
+                        // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
+                        const acP = statblock.querySelector('[data-bestiary-ac-line]');
+                        const hpP = statblock.querySelector('[data-bestiary-hp-line]');
+                        if (hpP) {
+                            const newHP = 4 + 4 * Number(e.target.value || 0);
+                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                        }
+                    }
+                }
+            });
+            window._classLevelSelectListenerAdded = true;
+        }
+    }
+
 
     // Traits and actions
     const renderSection = (arr, label) => {
@@ -445,15 +785,24 @@ function renderBestiaryDescription(entry) {
         ).join('');
     };
 
+    // Compose extra info lines below the table
+    let extraLines = '';
+    if (resistances) extraLines += `<p><strong>Resistances</strong> ${escapeHtml(resistances)}</p>`;
+    if (immunities) extraLines += `<p><strong>Immunities</strong> ${immunities}</p>`;
+    if (senses) extraLines += `<p><strong>Senses</strong> ${escapeHtml(senses)}</p>`;
+    if (languages) extraLines += `<p><strong>Languages</strong> ${escapeHtml(languages)}</p>`;
+    if (spellLevelDropdown) extraLines += `<p><strong>Spell Level</strong> ${spellLevelDropdown}</p>`;
+    if (classLevelDropdown) extraLines += `<p><strong>Class Level</strong> ${classLevelDropdown}</p>`;
+
     return `
         <div class="bestiary-statblock">
             <p>${escapeHtml(type)}</p>
-            <p><strong>AC</strong> ${escapeHtml(ac ?? '')}</p>
-            <p><strong>HP</strong> ${escapeHtml(hp ?? '')}</p>
+            <p data-bestiary-ac-line><strong>AC</strong> ${escapeHtml(ac ?? '')}</p>
+            <p data-bestiary-hp-line><strong>HP</strong> ${escapeHtml(hp ?? '')}</p>
             <p><strong>Speed</strong> ${escapeHtml(speed ?? '')}</p>
+            <p><strong>Initiative</strong> ${escapeHtml(abilityMod(entry.dex) ?? '')}</p>
             <table class="bestiary-abilities"><tr>${abilities}</tr></table>
-            <p><strong>Senses:</strong> ${escapeHtml(senses ?? '')} <strong>Languages:</strong> ${escapeHtml(languages ?? '')}</p>
-            ${immunities ? `<p><strong>Immunities:</strong> ${escapeHtml(immunities)}</p>` : ''}
+            ${extraLines}
         </div>
         ${renderSection(entry.trait, 'Traits')}
         ${renderSection(entry.action, 'Actions')}
@@ -1568,6 +1917,7 @@ function backendToDisplaySpellCategory(slug) {
         case '0': return '0';
         case '1': return '1';
         case '2': return '2';
+
         case '3': return '3';
         case '4': return '4';
         case '5': return '5';
@@ -2358,5 +2708,4 @@ document.addEventListener('click', (e) => {
 // Handle browser navigation (back/forward)
 window.addEventListener('popstate', router);
 
-// Initial route
 router();
