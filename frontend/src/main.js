@@ -2062,8 +2062,8 @@ function itemCategoryLabel(code) {
     // Known item type code labels (5eTools-style)
     const MAP = {
         // Weapons
-        'M': 'Melee Weapon',
-        'R': 'Ranged Weapon',
+        'M': 'Weapon',
+        'R': 'Weapon',
         'A': 'Ammunition',
         'AF': 'Ammunition',
 
@@ -2153,11 +2153,8 @@ function weaponKindFromType(typeCode) {
     const raw = String(typeCode).trim().toUpperCase();
     const c = raw.includes('|') ? raw.split('|', 1)[0] : raw;
     switch (c) {
-        case 'M': return 'Melee weapon';
-        case 'R': return 'Ranged weapon';
-        case 'A':
-        case 'AF':
-            return 'Ammunition';
+        case 'M': return 'melee Weapon';
+        case 'R': return 'ranged weapon';
         default: return '';
     }
 }
