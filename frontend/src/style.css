@@ -215,10 +215,10 @@ h1 {
 
 .card h3 {
   margin-top: 0;
-  font-size: 1.75rem;
+  font-size: 2rem;
   letter-spacing: .5px;
   position: relative;
-  padding-bottom: 0.5em;
+  padding-bottom: 0.25em;
   border-bottom: 2px solid #ffc57acb; /* Very muted orange */
   color: #ffc57acb;
   margin-left: -2em;
@@ -227,6 +227,7 @@ h1 {
   padding-right: 2em;
   font-variant: small-caps;
 }
+
 /* Highlight for changed stats (AC/HP) */
 .bestiary-stat-changed {
   color: #ffc57acb !important;
@@ -236,9 +237,11 @@ h1 {
 .card h4 {
   margin-bottom: .5rem;
   margin-top: 1.5rem;
-  font-size: 1.05rem;
+  font-size: 1.25rem;
   letter-spacing: .5px;
   position: relative;
+  color: #ffc57acb;
+  font-variant: small-caps;
 }
 .card h4::after {
   content: "";
@@ -359,5 +362,12 @@ button:focus-visible {
 
 .entry-list li {
   margin-bottom: 0.2rem;
+}
+
+.bestiary-section > strong {
+  display: inline-block;
+}
+.bestiary-section {
+  margin-bottom: 0.25em;
 }
 
