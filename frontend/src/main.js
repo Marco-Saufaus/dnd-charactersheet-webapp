@@ -528,28 +528,52 @@ function renderBestiaryDescription(entry) {
                         router();
                         return;
                     }
-                    // Find the closest statblock container
-                    const statblock = e.target.closest('.bestiary-statblock');
-                    if (!statblock) {
-                        return;
-                    }
+                    // Update the name
                     // Get the creature name from the URL path
                     const pathParts = window.location.pathname.split('/').filter(Boolean);
                     let creatureName = '';
                     if (pathParts.length > 1 && pathParts[0].toLowerCase() === 'bestiary') {
                         creatureName = decodeURIComponent(pathParts[1] || '');
                     }
+                    if (creatureName) {
+                        // Get the base name (remove any previous (xth-Level Spell) suffix)
+                        let baseName = creatureName.replace(/ \(\d+(st|nd|rd|th)-Level Spell\)$/, '');
+
+                        // Format the level as ordinal
+                        const level = Number(e.target.value || 0);
+                        let ordinal = level + 'th';
+                        if (level === 1) ordinal = '1st';
+                        else if (level === 2) ordinal = '2nd';
+                        else if (level === 3) ordinal = '3rd';
+                        else if ([4,5,6,7,8,9].includes(level)) ordinal = level + 'th';
+
+                        const newName = `${baseName} (${ordinal}-Level Spell)`;
+                        // Find the closest card and update its h3
+                        const cardElem = e.target.closest('.card.bestiary-card');
+                        if (cardElem) {
+                            const nameElem = cardElem.querySelector('h3');
+                            if (nameElem) {
+                                nameElem.textContent = newName;
+                            }
+                        }
+                    }
+                    
+                    // Find the closest statblock container
+                    const statblock = e.target.closest('.bestiary-statblock');
+                    if (!statblock) {
+                        return;
+                    }
                     if (creatureName.toLowerCase().includes("celestial spirit")) {
                         // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 11 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC + ' + 2 (Defender only)';
+                                const newAC = 11 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span> + 2 (Defender only)';
                         }
                         if (hpP) {
-                            const newHP = 40 + 10 * (Number(e.target.value || 0) - 5);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 40 + 10 * (Number(e.target.value || 0) - 5);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("aberrant spirit")) {
@@ -557,12 +581,12 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 11 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                                const newAC = 11 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span>';
                         }
                         if (hpP) {
-                            const newHP = 40 + 10 * (Number(e.target.value || 0) - 4);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 40 + 10 * (Number(e.target.value || 0) - 4);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("animated object")) {
@@ -574,8 +598,8 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 11 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                                const newAC = 11 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span>';
                         }
                         if (hpP) {
                             const newHP = 40 + 10 * (Number(e.target.value || 0) - 4);
@@ -591,9 +615,9 @@ function renderBestiaryDescription(entry) {
                             acP.innerHTML = '<strong>AC</strong> ' + newAC;
                         }
                         if (hpP) {
-                            const newHPAir = 20 + 5 * (Number(e.target.value || 0) - 2);
-                            const newHPLand = 30 + 5 * (Number(e.target.value || 0) - 2);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHPAir + ' (Air only) or ' + newHPLand + ' (Land and Water only)';
+                                const newHPAir = 20 + 5 * (Number(e.target.value || 0) - 2);
+                                const newHPLand = 30 + 5 * (Number(e.target.value || 0) - 2);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHPAir + '</span> (Air only) or <span class="bestiary-stat-changed">' + newHPLand + '</span> (Land and Water only)';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("construct spirit")) {
@@ -601,12 +625,12 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 13 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                                const newAC = 13 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span>';
                         }
                         if (hpP) {
-                            const newHP = 40 + 15 * (Number(e.target.value || 0) - 4);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 40 + 15 * (Number(e.target.value || 0) - 4);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("draconic spirit")) {
@@ -614,12 +638,12 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 14 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                                const newAC = 14 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span>';
                         }
                         if (hpP) {
-                            const newHP = 50 + 10 * (Number(e.target.value || 0) - 5);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 50 + 10 * (Number(e.target.value || 0) - 5);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("elemental spirit")) {
@@ -627,12 +651,12 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 11 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                                const newAC = 11 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span>';
                         }
                         if (hpP) {
-                            const newHP = 50 + 10 * (Number(e.target.value || 0) - 4);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 50 + 10 * (Number(e.target.value || 0) - 4);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("fey spirit")) {
@@ -640,12 +664,12 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 12 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                                const newAC = 12 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span>';
                         }
                         if (hpP) {
-                            const newHP = 30 + 10 * (Number(e.target.value || 0) - 3);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 30 + 10 * (Number(e.target.value || 0) - 3);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("fiendish spirit")) {
@@ -653,14 +677,14 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 12 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                                const newAC = 12 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span>';
                         }
                         if (hpP) {
-                            const newHPDemon = 50 + 15 * (Number(e.target.value || 0) - 6);
-                            const newHPDevil = 40 + 15 * (Number(e.target.value || 0) - 6);
-                            const newHPYugoloth = 60 + 15 * (Number(e.target.value || 0) - 6);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHPDemon + ' (Demon only) or ' + newHPDevil + ' (Devil only) or ' + newHPYugoloth + ' (Yugoloth only)';
+                                const newHPDemon = 50 + 15 * (Number(e.target.value || 0) - 6);
+                                const newHPDevil = 40 + 15 * (Number(e.target.value || 0) - 6);
+                                const newHPYugoloth = 60 + 15 * (Number(e.target.value || 0) - 6);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHPDemon + '</span> (Demon only) or <span class="bestiary-stat-changed">' + newHPDevil + '</span> (Devil only) or <span class="bestiary-stat-changed">' + newHPYugoloth + '</span> (Yugoloth only)';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("giant insect")) {
@@ -668,12 +692,12 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 11 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                                const newAC = 11 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span>';
                         }
                         if (hpP) {
-                            const newHP = 30 + 10 * (Number(e.target.value || 0) - 4);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 30 + 10 * (Number(e.target.value || 0) - 4);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("otherworldly steed")) {
@@ -681,12 +705,12 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (acP) {
-                            const newAC = 10 + Number(e.target.value || 0);
-                            acP.innerHTML = '<strong>AC</strong> ' + newAC;
+                                const newAC = 10 + Number(e.target.value || 0);
+                                acP.innerHTML = '<strong>AC</strong> <span class="bestiary-stat-changed">' + newAC + '</span>';
                         }
                         if (hpP) {
-                            const newHP = 5 + 10 * (Number(e.target.value || 0));
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 5 + 10 * (Number(e.target.value || 0));
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                     else if (creatureName.toLowerCase().includes("undead spirit")) {
@@ -737,19 +761,35 @@ function renderBestiaryDescription(entry) {
                     if (!statblock) {
                         return;
                     }
-                    // Get the creature name from the URL path
                     const pathParts = window.location.pathname.split('/').filter(Boolean);
                     let creatureName = '';
                     if (pathParts.length > 1 && pathParts[0].toLowerCase() === 'bestiary') {
                         creatureName = decodeURIComponent(pathParts[1] || '');
+                    }
+                    if (creatureName) {
+                        // Get the base name (remove any previous (xth-Level Spell) suffix)
+                        let baseName = creatureName.replace(/ \(\d+(st|nd|rd|th)-Level Spell\)$/, '');
+
+                        // Format the level
+                        const level = Number(e.target.value || 0);
+
+                        const newName = `${baseName} (Level ${level} Ranger)`;
+                        // Find the closest card and update its h3
+                        const cardElem = e.target.closest('.card.bestiary-card');
+                        if (cardElem) {
+                            const nameElem = cardElem.querySelector('h3');
+                            if (nameElem) {
+                                nameElem.textContent = newName;
+                            }
+                        }
                     }
                     if (creatureName.toLowerCase().includes("beast of the land")) {
                         // Find <p> with <strong>AC</strong> and <p> with <strong>HP</strong>
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (hpP) {
-                            const newHP = 5 + 5 * Number(e.target.value || 0);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 5 + 5 * Number(e.target.value || 0);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                     if (creatureName.toLowerCase().includes("beast of the sea")) {
@@ -766,8 +806,8 @@ function renderBestiaryDescription(entry) {
                         const acP = statblock.querySelector('[data-bestiary-ac-line]');
                         const hpP = statblock.querySelector('[data-bestiary-hp-line]');
                         if (hpP) {
-                            const newHP = 4 + 4 * Number(e.target.value || 0);
-                            hpP.innerHTML = '<strong>HP</strong> ' + newHP;
+                                const newHP = 4 + 4 * Number(e.target.value || 0);
+                                hpP.innerHTML = '<strong>HP</strong> <span class="bestiary-stat-changed">' + newHP + '</span>';
                         }
                     }
                 }
