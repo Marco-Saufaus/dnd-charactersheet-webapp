@@ -1481,7 +1481,7 @@ async function renderItemDetail(container) {
                 }
             }
             if (!parts.length) return '';
-            return `<p class="item-stats">${parts.join(' • ')}</p>`;
+            return `<p class="item-stats">${parts.join('<br>')}</p>`;
         })();
             
         // If baseItem, fetch and build its stats/extras
@@ -1552,7 +1552,7 @@ async function renderItemDetail(container) {
                     .filter(Boolean)));
                 const filtered = showedVersatile ? names.filter(n => n.toLowerCase() !== 'versatile') : names;
                 if (filtered.length) {
-                    lines.push(filtered.join(', '));
+                    lines.push(filtered.map(n => `<a href="/item-properties/${encodeURIComponent(n)}" data-link>${escapeHtml(n)}</a>`).join(', '));
                 }
             }
 
@@ -1563,7 +1563,7 @@ async function renderItemDetail(container) {
                 .map(m => (m.includes('|') ? m.split('|', 1)[0] : m))
                 .filter(Boolean);
             if (masteryNames.length) {
-                lines.push(`Mastery: ${escapeHtml(masteryNames.join(', '))}`);
+                lines.push('Mastery: ' + masteryNames.map(m => `<a href="/item-masteries/${encodeURIComponent(m)}" data-link>${escapeHtml(m)}</a>`).join(', '));
             }
 
             if (!lines.length) return '';
