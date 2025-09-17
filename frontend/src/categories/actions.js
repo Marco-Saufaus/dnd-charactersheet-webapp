@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
 
 async function renderActionsList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/actions.html');
+    container.innerHTML = await loadTemplate('actions');
     try {
         const response = await fetch('http://localhost:8000/actions/search');
         const actions = await response.json();
@@ -44,8 +44,8 @@ async function renderActionDetail(container) {
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
         const el = document.getElementById('action-detail');
 
-        // Load detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/action-detail.html');
+        // Load detail card template
+        const tpl = await loadTemplate('action-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{TIME}}', escapeHtml(formatActionTime(item.time)) || '—')

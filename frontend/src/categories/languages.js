@@ -43,7 +43,7 @@ function handleLanguagesRoute(container) {
 }
 
 async function renderLanguagesList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/languages.html');
+    container.innerHTML = await loadTemplate('languages');
     const ul = document.getElementById('language-categories');
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
@@ -94,7 +94,7 @@ async function renderLanguageDetail(container) {
         const el = document.getElementById('language-detail');
 
         // Load language detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/language-detail.html');
+        const tpl = await loadTemplate('language-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{CATEGORY}}', (() => {

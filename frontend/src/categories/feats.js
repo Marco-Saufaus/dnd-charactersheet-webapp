@@ -47,7 +47,7 @@ function handleFeatsRoute(container) {
 }
 
 async function renderFeatsList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/feats.html');
+    container.innerHTML = await loadTemplate('feats');
     const ul = document.getElementById('feat-categories');
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
@@ -98,7 +98,7 @@ async function renderFeatDetail(container) {
         const el = document.getElementById('feat-detail');
 
         // Load feat detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/feat-detail.html');
+        const tpl = await loadTemplate('feat-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{CATEGORY}}', (() => {

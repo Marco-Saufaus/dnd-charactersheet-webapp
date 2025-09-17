@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, capitalizeCommaSeparated } from '../utils.js';
 
 async function renderBestiaryList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/bestiary.html');
+    container.innerHTML = await loadTemplate('bestiary');
     try {
         const response = await fetch('http://localhost:8000/bestiary/search');
         const bestiary = await response.json();
@@ -45,7 +45,7 @@ async function renderBestiaryDetail(container) {
         const el = document.getElementById('bestiary-detail');
 
         // Load bestiary detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/bestiary-detail.html');
+        const tpl = await loadTemplate('bestiary-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{DESCRIPTION}}', renderBestiaryDescription(item))
@@ -256,11 +256,44 @@ function renderBestiaryDescription(entry) {
         </select>`;
         // Add delegated event listener if not already present
         if (!window._spellLevelSelectListenerAdded) {
+            // Helper function to reset bestiary content without full page reload
+            async function resetBestiaryContent() {
+                const id = window.location.pathname.split('/').pop();
+                try {
+                    const res = await fetch(`http://localhost:8000/bestiary/${id}`);
+                    if (!res.ok) throw new Error('Not found');
+                    const item = await res.json();
+                    const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+                    
+                    // Update the card title to base name
+                    const cardElem = document.querySelector('.card.bestiary-card');
+                    if (cardElem) {
+                        const nameElem = cardElem.querySelector('h3');
+                        if (nameElem) {
+                            nameElem.textContent = item.name ?? '';
+                        }
+                    }
+                    
+                    // Re-render the bestiary detail content
+                    const el = document.getElementById('bestiary-detail');
+                    if (el) {
+                        const tpl = await loadTemplate('bestiary-detail');
+                        const html = tpl
+                            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+                            .replace('{{DESCRIPTION}}', renderBestiaryDescription(item))
+                            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+                        el.innerHTML = html;
+                    }
+                } catch (e) {
+                    console.error('Error resetting bestiary:', e);
+                }
+            }
+            
             document.addEventListener('change', function(e) {
                 if (e.target && e.target.classList && e.target.classList.contains('spell-level-select')) {
                     if (e.target.value === '') {
-                        // Re-render the base statblock by reloading the current route
-                        router();
+                        // Reset to base creature without page reload
+                        resetBestiaryContent();
                         return;
                     }
                     // Update the name
@@ -666,11 +699,44 @@ function renderBestiaryDescription(entry) {
         </select>`;
         // Add delegated event listener if not already present
         if (!window._classLevelSelectListenerAdded) {
+            // Helper function to reset bestiary content without full page reload (shared with spell level)
+            async function resetBestiaryContent() {
+                const id = window.location.pathname.split('/').pop();
+                try {
+                    const res = await fetch(`http://localhost:8000/bestiary/${id}`);
+                    if (!res.ok) throw new Error('Not found');
+                    const item = await res.json();
+                    const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
+                    
+                    // Update the card title to base name
+                    const cardElem = document.querySelector('.card.bestiary-card');
+                    if (cardElem) {
+                        const nameElem = cardElem.querySelector('h3');
+                        if (nameElem) {
+                            nameElem.textContent = item.name ?? '';
+                        }
+                    }
+                    
+                    // Re-render the bestiary detail content
+                    const el = document.getElementById('bestiary-detail');
+                    if (el) {
+                        const tpl = await loadTemplate('bestiary-detail');
+                        const html = tpl
+                            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+                            .replace('{{DESCRIPTION}}', renderBestiaryDescription(item))
+                            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+                        el.innerHTML = html;
+                    }
+                } catch (e) {
+                    console.error('Error resetting bestiary:', e);
+                }
+            }
+            
             document.addEventListener('change', function(e) {
                 if (e.target && e.target.classList && e.target.classList.contains('class-level-select')) {
                     if (e.target.value === '') {
-                        // Re-render the base statblock by reloading the current route
-                        router();
+                        // Reset to base creature without page reload
+                        resetBestiaryContent();
                         return;
                     }
                     // Find the closest statblock container

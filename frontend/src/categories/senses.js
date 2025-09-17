@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
 
 async function renderSensesList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/senses.html');
+    container.innerHTML = await loadTemplate('senses');
     try {
         const response = await fetch('http://localhost:8000/senses/search');
         const senses = await response.json();
@@ -45,7 +45,7 @@ async function renderSenseDetail(container) {
         const el = document.getElementById('sense-detail');
 
         // Load sense detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/sense-detail.html');
+        const tpl = await loadTemplate('sense-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')

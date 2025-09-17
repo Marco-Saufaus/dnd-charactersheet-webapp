@@ -1,5 +1,4 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
-import { propertyNameFromCode } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, propertyNameFromCode } from '../utils.js';
 
 const ITEM_CATEGORY_DISPLAY_TO_BACKEND = {
     "general-items": "general",
@@ -62,7 +61,7 @@ function handleItemsRoute(container) {
 }
 
 async function renderItemsList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/items.html');
+    container.innerHTML = await loadTemplate('items');
     const ul = document.getElementById('item-categories');
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
@@ -162,7 +161,7 @@ async function renderItemDetail(container) {
         const el = document.getElementById('item-detail');
 
         // Load item detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/item-details.html');
+        const tpl = await loadTemplate('item-details');
 
         // Helper to fetch a base item by name|SRC
         async function fetchBaseItem(baseItemStr) {

@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
 
 async function renderItemPropertiesList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/item-properties.html');
+    container.innerHTML = await loadTemplate('item-properties');
     try {
         const response = await fetch('http://localhost:8000/item-properties/search');
         const properties = await response.json();
@@ -44,7 +44,7 @@ async function renderItemPropertyDetail(container) {
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
         const el = document.getElementById('item-property-detail');
 
-        const tpl = await loadTemplate('/src/templates/item-property-detail.html');
+        const tpl = await loadTemplate('item-property-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')

@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
 
 async function renderItemMasteriesList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/item-masteries.html');
+    container.innerHTML = await loadTemplate('item-masteries');
     try {
         const response = await fetch('http://localhost:8000/item-masteries/search');
         const masteries = await response.json();
@@ -44,7 +44,7 @@ async function renderItemMasteryDetail(container) {
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
         const el = document.getElementById('item-mastery-detail');
 
-        const tpl = await loadTemplate('/src/templates/item-mastery-detail.html');
+        const tpl = await loadTemplate('item-mastery-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')

@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
 
 async function renderConditionsList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/conditions.html');
+    container.innerHTML = await loadTemplate('conditions');
     try {
         const response = await fetch('http://localhost:8000/conditions/search');
         const conditions = await response.json();
@@ -45,7 +45,7 @@ async function renderConditionDetail(container) {
         const el = document.getElementById('condition-detail');
 
         // Load condition detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/condition-detail.html');
+        const tpl = await loadTemplate('condition-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')

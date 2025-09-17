@@ -41,7 +41,7 @@ function handleOptionalFeaturesRoute(container) {
 }
 
 async function renderOptionalFeaturesList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/optionalfeatures.html');
+    container.innerHTML = await loadTemplate('optionalfeatures');
     const ul = document.getElementById('optionalfeature-categories');
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
@@ -87,7 +87,7 @@ async function renderOptionalFeatureDetail(container) {
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
         const el = document.getElementById('optionalfeature-detail');
-        const tpl = await loadTemplate('/src/templates/optionalfeature-detail.html');
+        const tpl = await loadTemplate('optionalfeature-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{CATEGORY}}', (() => {

@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
 
 async function renderVariantsList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/variants.html');
+    container.innerHTML = await loadTemplate('variants');
     try {
         const response = await fetch('http://localhost:8000/variant-rules/search');
         const variants = await response.json();
@@ -45,7 +45,7 @@ async function renderVariantDetail(container) {
         const el = document.getElementById('variant-detail');
 
         // Load variant-rule detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/variant-detail.html');
+        const tpl = await loadTemplate('variant-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')

@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
 
 async function renderSkillsList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/skills.html');
+    container.innerHTML = await loadTemplate('skills');
     try {
         const response = await fetch('http://localhost:8000/skills/search');
         const skills = await response.json();
@@ -45,7 +45,7 @@ async function renderSkillDetail(container) {
         const el = document.getElementById('skill-detail');
 
         // Load skill detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/skill-detail.html');
+        const tpl = await loadTemplate('skill-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
                .replace('{{ABILITY}}', escapeHtml(abilityFullName(item.ability)))

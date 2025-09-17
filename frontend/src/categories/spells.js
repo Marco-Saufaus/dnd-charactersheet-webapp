@@ -60,7 +60,7 @@ function handleSpellsRoute(container) {
 }
 
 async function renderSpellsList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/spells.html');
+    container.innerHTML = await loadTemplate('spells');
     const ul = document.getElementById('spell-categories');
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
@@ -249,21 +249,19 @@ async function renderSpellDetail(container) {
             scalingNote = `<div><strong>Using a Higher-Level Spell Slot:</strong> <span>${renderEntries(item.entriesHigherLevel, true).replace(/^<p>|<\/p>$/g, '')}</span></div>`;
         }
 
-    // Compose HTML
-    const html = `
-<div class="card spell-card">
-  <h3>${escapeHtml(item.name ?? '')}</h3>
-  <div><strong>${headerLine}</strong></div>
-  <div><strong>Casting Time:</strong> ${escapeHtml(castingTime)}</div>
-  <div><strong>Range:</strong> ${escapeHtml(range)}</div>
-  <div><strong>Components:</strong> ${escapeHtml(components)}</div>
-    <div><strong>Duration:</strong> ${duration}</div>
-  <section style="margin-top:1em;">${description}</section>
-  ${scalingNote}
-  <p><strong>Source:</strong> ${escapeHtml(displaySource)}${item.page != null ? ` p.${item.page}` : ''}</p>
-</div>
-`;
-    el.innerHTML = html;
+        // Load spell detail template and replace tokens
+        const tpl = await loadTemplate('spell-detail');
+        const html = tpl
+            .replace('{{NAME}}', escapeHtml(item.name ?? ''))
+            .replace('{{HEADER_LINE}}', headerLine)
+            .replace('{{CASTING_TIME}}', escapeHtml(castingTime))
+            .replace('{{RANGE}}', escapeHtml(range))
+            .replace('{{COMPONENTS}}', escapeHtml(components))
+            .replace('{{DURATION}}', duration)
+            .replace('{{DESCRIPTION}}', description)
+            .replace('{{SCALING_NOTE}}', scalingNote)
+            .replace('{{SOURCE}}', `${displaySource}${item.page != null ? ` p.${item.page}` : ''}`);
+        el.innerHTML = html;
 
     } catch (e) {
         console.error('Error loading spell:', e);

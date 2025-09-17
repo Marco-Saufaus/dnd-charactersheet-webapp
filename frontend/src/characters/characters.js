@@ -1,7 +1,7 @@
 import { loadTemplate } from '../utils.js';
 
 async function renderCharacterList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/characters.html');
+    container.innerHTML = await loadTemplate('characters');
     try {
         const response = await fetch('http://localhost:8000/characters/');
         const characters = await response.json();

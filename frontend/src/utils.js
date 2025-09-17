@@ -1,6 +1,8 @@
 const templateCache = new Map();
 async function loadTemplate(path) {
 
+    path = '/templates/' + path + '.html';
+
     if (templateCache.has(path)) return templateCache.get(path);
     const res = await fetch(path);
     if (!res.ok) throw new Error(`Failed to load template ${path}`);

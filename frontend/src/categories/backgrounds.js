@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
 
 async function renderBackgroundsList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/backgrounds.html');
+    container.innerHTML = await loadTemplate('backgrounds');
     try {
         const response = await fetch('http://localhost:8000/backgrounds/search');
         const backgrounds = await response.json();
@@ -45,7 +45,7 @@ async function renderBackgroundDetail(container) {
         const el = document.getElementById('background-detail');
 
         // Load background detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/background-detail.html');
+        const tpl = await loadTemplate('background-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')

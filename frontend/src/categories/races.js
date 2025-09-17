@@ -1,7 +1,7 @@
 import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
 
 async function renderRacesList(container) {
-    container.innerHTML = await loadTemplate('/src/templates/races.html');
+    container.innerHTML = await loadTemplate('races');
     try {
         const response = await fetch('http://localhost:8000/races/search');
         const races = await response.json();
@@ -45,7 +45,7 @@ async function renderRaceDetail(container) {
         const el = document.getElementById('race-detail');
 
         // Load race detail card template and replace tokens
-        const tpl = await loadTemplate('/src/templates/race-detail.html');
+        const tpl = await loadTemplate('race-detail');
         const html = tpl
             .replace('{{NAME}}', escapeHtml(item.name ?? ''))
             .replace('{{DESCRIPTION}}', renderEntries(item.entries ?? []) || '')
