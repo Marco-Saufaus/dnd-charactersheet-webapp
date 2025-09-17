@@ -7,7 +7,7 @@ from dnd_backend.models.variant_model import Variant
 router = APIRouter(prefix="/variant-rules", tags=["variants"])
 
 @router.get("/search", response_model=list[Variant])
-async def list_variants(q: Optional[str] = None, source: Optional[str] = None, skip: int = 0, limit: int = 50):
+async def list_variants(q: Optional[str] = None, source: Optional[str] = None, skip: int = 0, limit: int = 200):
     query: dict = {}
     if q:
         query["name"] = {"$regex": q, "$options": "i"}
