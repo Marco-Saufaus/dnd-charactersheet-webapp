@@ -25,6 +25,9 @@ FROM caddy:2-alpine AS runtime
 # Copy compiled assets only
 COPY --from=build /app/dist /usr/share/caddy
 
+# Copy minimal Caddyfile for SPA routing
+COPY Caddyfile /etc/caddy/Caddyfile
+
 # Copy the runtime configuration script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
