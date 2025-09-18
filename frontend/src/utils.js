@@ -201,7 +201,15 @@ function capitalizeCommaSeparated(str) {
 }
 
 function getBackend() {
-    return 'http://localhost:8000';
+    // Runtime configuration - placeholder gets replaced at container startup
+    const runtimeUrl = '__API_BASE_URL_PLACEHOLDER__';
+    
+    // If runtime placeholder wasn't replaced, use default (for local development)
+    if (runtimeUrl.includes('PLACEHOLDER')) {
+        return 'http://localhost:8000';
+    }
+    
+    return runtimeUrl;
 }
 
 export { loadTemplate, escapeHtml, formatSourceWithPage, renderEntries, formatInlineRefs, normalizeSource, capitalizeCommaSeparated, propertyNameFromCode, getBackend };
