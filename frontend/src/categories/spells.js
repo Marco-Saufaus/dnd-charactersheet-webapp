@@ -1,4 +1,6 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 const SPELL_CATEGORY_DISPLAY_TO_BACKEND = {
     '0': '0',
@@ -65,7 +67,7 @@ async function renderSpellsList(container) {
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
     try {
-        const res = await fetch('http://localhost:8000/spells/categories');
+        const res = await fetch(BACKEND_URL + '/spells/categories');
         if (!res.ok) throw new Error('Failed');
         const categories = await res.json();
         ul.innerHTML = '';
@@ -84,7 +86,7 @@ async function renderSpellsCategory(container, backendSlug) {
     
     container.innerHTML = '<h2>spells</h2><p>Loading category…</p>';
     try {
-        const res = await fetch(`http://localhost:8000/spells/category/${backendSlug}`);
+        const res = await fetch(BACKEND_URL + `/spells/category/${backendSlug}`);
         if (!res.ok) throw new Error('Not found');
         const data = await res.json();
         const { category, spells } = data;
@@ -104,7 +106,7 @@ async function renderSpellDetail(container) {
     <div id="spell-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/spells/${id}`);
+        const res = await fetch(BACKEND_URL + `/spells/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
@@ -213,7 +215,7 @@ async function renderSpellDetail(container) {
                         const unit = d.duration.type;
                         let upTo = '';
                         if (d.concentration) {
-                            upTo = `<a href="http://localhost:5173/conditions/Concentration" data-link>Concentration</a>, up to `;
+                            upTo = `<a href="/conditions/Concentration" data-link>Concentration</a>, up to `;
                         }
                         // Pluralize unit if needed
                         let unitStr = unit;

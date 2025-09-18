@@ -1,4 +1,6 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, propertyNameFromCode } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, propertyNameFromCode, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 const ITEM_CATEGORY_DISPLAY_TO_BACKEND = {
     "general-items": "general",
@@ -66,7 +68,7 @@ async function renderItemsList(container) {
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
     try {
-        const res = await fetch('http://localhost:8000/items/categories');
+        const res = await fetch(BACKEND_URL + '/items/categories');
         if (!res.ok) throw new Error('Failed');
         const categories = await res.json();
         ul.innerHTML = '';
@@ -85,7 +87,7 @@ async function renderItemsCategory(container, backendSlug) {
     
     container.innerHTML = '<h2>Items</h2><p>Loading category…</p>';
     try {
-        const res = await fetch(`http://localhost:8000/items/category/${backendSlug}`);
+        const res = await fetch(BACKEND_URL + `/items/category/${backendSlug}`);
         if (!res.ok) throw new Error('Not found');
         const data = await res.json();
         const { category, items } = data;
@@ -154,7 +156,7 @@ async function renderItemDetail(container) {
     <div id="item-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/items/${id}`);
+        const res = await fetch(BACKEND_URL + `/items/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
@@ -171,7 +173,7 @@ async function renderItemDetail(container) {
             src = (src || '').trim();
             if (!name) return null;
             // Try backend endpoint: /items/{name}?source={src}
-            let url = `http://localhost:8000/items/${encodeURIComponent(name)}`;
+            let url = BACKEND_URL + `/items/${encodeURIComponent(name)}`;
             if (src) url += `?source=${encodeURIComponent(src)}`;
             try {
                 const r = await fetch(url);
@@ -340,8 +342,8 @@ async function renderItemDetail(container) {
                 }
             };
 
-            const propDetails = await Promise.all(propNames.map(n => fetchSafe(`http://localhost:8000/item-properties/${encodeURIComponent(n)}`)));
-            const masteryDetails = await Promise.all(masteryNames.map(n => fetchSafe(`http://localhost:8000/item-masteries/${encodeURIComponent(n)}`)));
+            const propDetails = await Promise.all(propNames.map(n => fetchSafe(BACKEND_URL + `/item-properties/${encodeURIComponent(n)}`)));
+            const masteryDetails = await Promise.all(masteryNames.map(n => fetchSafe(BACKEND_URL + `/item-masteries/${encodeURIComponent(n)}`)));
 
             const stripLeadingName = (html, name) => {
                 if (!html || !name) return html || '';
@@ -404,7 +406,7 @@ async function renderItemDetail(container) {
             if (extractedName) {
                 // Fetch the item group from the backend
                 try {
-                    const res = await fetch(`http://localhost:8000/item-groups/${encodeURIComponent(extractedName)}`);
+                    const res = await fetch(BACKEND_URL + `/item-groups/${encodeURIComponent(extractedName)}`);
                     if (res.ok) {
                         const group = await res.json();
                         descriptionHtml = renderEntries(group.entries ?? []);

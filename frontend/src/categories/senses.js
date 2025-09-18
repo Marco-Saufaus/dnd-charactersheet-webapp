@@ -1,9 +1,11 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 async function renderSensesList(container) {
     container.innerHTML = await loadTemplate('senses');
     try {
-        const response = await fetch('http://localhost:8000/senses/search');
+        const response = await fetch(BACKEND_URL + '/senses/search');
         const senses = await response.json();
 
         const tbody = document.querySelector('#senses-table tbody');
@@ -38,7 +40,7 @@ async function renderSenseDetail(container) {
     <div id="sense-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/senses/${id}`);
+        const res = await fetch(BACKEND_URL + `/senses/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

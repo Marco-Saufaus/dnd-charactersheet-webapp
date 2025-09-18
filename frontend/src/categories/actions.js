@@ -1,9 +1,11 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 async function renderActionsList(container) {
     container.innerHTML = await loadTemplate('actions');
     try {
-        const response = await fetch('http://localhost:8000/actions/search');
+        const response = await fetch(BACKEND_URL + '/actions/search');
         const actions = await response.json();
 
         const tbody = document.querySelector('#actions-table tbody');
@@ -38,7 +40,7 @@ async function renderActionDetail(container) {
     <div id="action-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/actions/${id}`);
+        const res = await fetch(BACKEND_URL + `/actions/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

@@ -195,9 +195,13 @@ function resolveRefRouteBase(type) {
     }
 }
 
-    function capitalizeCommaSeparated(str) {
-        if (typeof str !== 'string') return str;
-        return str.split(', ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
-    }
+function capitalizeCommaSeparated(str) {
+    if (typeof str !== 'string') return str;
+    return str.split(', ').map(s => s.charAt(0).toUpperCase() + s.slice(1)).join(', ');
+}
 
-export { loadTemplate, escapeHtml, formatSourceWithPage, renderEntries, formatInlineRefs, normalizeSource, capitalizeCommaSeparated, propertyNameFromCode };
+function getBackend() {
+    return 'http://localhost:8000';
+}
+
+export { loadTemplate, escapeHtml, formatSourceWithPage, renderEntries, formatInlineRefs, normalizeSource, capitalizeCommaSeparated, propertyNameFromCode, getBackend };

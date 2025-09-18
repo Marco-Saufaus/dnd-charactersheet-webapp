@@ -1,9 +1,11 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 async function renderSkillsList(container) {
     container.innerHTML = await loadTemplate('skills');
     try {
-        const response = await fetch('http://localhost:8000/skills/search');
+        const response = await fetch(BACKEND_URL + '/skills/search');
         const skills = await response.json();
 
         const tbody = document.querySelector('#skills-table tbody');
@@ -38,7 +40,7 @@ async function renderSkillDetail(container) {
     <div id="skill-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/skills/${id}`);
+        const res = await fetch(BACKEND_URL + `/skills/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

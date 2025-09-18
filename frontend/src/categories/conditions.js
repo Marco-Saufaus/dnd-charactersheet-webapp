@@ -1,9 +1,11 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 async function renderConditionsList(container) {
     container.innerHTML = await loadTemplate('conditions');
     try {
-        const response = await fetch('http://localhost:8000/conditions/search');
+        const response = await fetch(BACKEND_URL + '/conditions/search');
         const conditions = await response.json();
 
         const tbody = document.querySelector('#conditions-table tbody');
@@ -38,7 +40,7 @@ async function renderConditionDetail(container) {
     <div id="condition-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/conditions/${id}`);
+        const res = await fetch(BACKEND_URL + `/conditions/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

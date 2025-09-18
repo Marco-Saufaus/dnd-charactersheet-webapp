@@ -1,4 +1,6 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 const FEAT_CATEGORY_DISPLAY_TO_BACKEND = {
     'origin-feats': 'origin',
@@ -52,7 +54,7 @@ async function renderFeatsList(container) {
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
     try {
-        const res = await fetch('http://localhost:8000/feats/categories');
+        const res = await fetch(BACKEND_URL + '/feats/categories');
         if (!res.ok) throw new Error('Failed');
         const categories = await res.json();
         ul.innerHTML = '';
@@ -71,7 +73,7 @@ async function renderFeatsCategory(container, backendSlug) {
     
     container.innerHTML = '<h2>Feats</h2><p>Loading category…</p>';
     try {
-        const res = await fetch(`http://localhost:8000/feats/category/${backendSlug}`);
+        const res = await fetch(BACKEND_URL + `/feats/category/${backendSlug}`);
         if (!res.ok) throw new Error('Not found');
         const data = await res.json();
         const { category, feats } = data;
@@ -91,7 +93,7 @@ async function renderFeatDetail(container) {
     <div id="feat-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/feats/${id}`);
+        const res = await fetch(BACKEND_URL + `/feats/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

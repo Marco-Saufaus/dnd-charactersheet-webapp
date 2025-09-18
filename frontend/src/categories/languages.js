@@ -1,4 +1,6 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 const LANGUAGE_CATEGORY_DISPLAY_TO_BACKEND = {
     'standard-languages': 'standard',
@@ -48,7 +50,7 @@ async function renderLanguagesList(container) {
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
     try {
-        const res = await fetch('http://localhost:8000/languages/categories');
+        const res = await fetch(BACKEND_URL + '/languages/categories');
         if (!res.ok) throw new Error('Failed');
         const categories = await res.json();
         ul.innerHTML = '';
@@ -67,7 +69,7 @@ async function renderLanguagesCategory(container, backendSlug) {
     
     container.innerHTML = '<h2>Languages</h2><p>Loading category…</p>';
     try {
-        const res = await fetch(`http://localhost:8000/languages/category/${backendSlug}`);
+        const res = await fetch(BACKEND_URL + `/languages/category/${backendSlug}`);
         if (!res.ok) throw new Error('Not found');
         const data = await res.json();
         const { category, languages } = data;
@@ -87,7 +89,7 @@ async function renderLanguageDetail(container) {
     <div id="language-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/languages/${id}`);
+        const res = await fetch(BACKEND_URL + `/languages/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

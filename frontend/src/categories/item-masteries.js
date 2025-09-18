@@ -1,9 +1,11 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 async function renderItemMasteriesList(container) {
     container.innerHTML = await loadTemplate('item-masteries');
     try {
-        const response = await fetch('http://localhost:8000/item-masteries/search');
+        const response = await fetch(BACKEND_URL + '/item-masteries/search');
         const masteries = await response.json();
 
         const tbody = document.querySelector('#masteries-table tbody');
@@ -38,7 +40,7 @@ async function renderItemMasteryDetail(container) {
     <div id="item-mastery-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/item-masteries/${id}`);
+        const res = await fetch(BACKEND_URL + `/item-masteries/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

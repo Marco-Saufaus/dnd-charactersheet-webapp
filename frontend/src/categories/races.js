@@ -1,9 +1,11 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 async function renderRacesList(container) {
     container.innerHTML = await loadTemplate('races');
     try {
-        const response = await fetch('http://localhost:8000/races/search');
+        const response = await fetch(BACKEND_URL + '/races/search');
         const races = await response.json();
 
         const tbody = document.querySelector('#races-table tbody');
@@ -38,7 +40,7 @@ async function renderRaceDetail(container) {
     <div id="race-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/races/${id}`);
+        const res = await fetch(BACKEND_URL + `/races/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

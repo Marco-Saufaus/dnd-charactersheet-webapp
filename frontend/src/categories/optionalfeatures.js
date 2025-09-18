@@ -1,4 +1,6 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 const OPTIONALFEATURE_CATEGORY_DISPLAY_TO_BACKEND = {
     'eldritch-invocations': 'invocation',
@@ -46,7 +48,7 @@ async function renderOptionalFeaturesList(container) {
     if (!ul) return;
     ul.innerHTML = '<li>Loading…</li>';
     try {
-        const res = await fetch('http://localhost:8000/optional-features/categories');
+        const res = await fetch(BACKEND_URL + '/optional-features/categories');
         if (!res.ok) throw new Error('Failed');
         const categories = await res.json();
         ul.innerHTML = '';
@@ -64,7 +66,7 @@ async function renderOptionalFeaturesList(container) {
 async function renderOptionalFeaturesCategory(container, backendSlug) {
     container.innerHTML = '<h2>Optional Features</h2><p>Loading category…</p>';
     try {
-        const res = await fetch(`http://localhost:8000/optional-features/category/${backendSlug}`);
+        const res = await fetch(BACKEND_URL + `/optional-features/category/${backendSlug}`);
         if (!res.ok) throw new Error('Not found');
         const data = await res.json();
         const { category, optionalfeatures } = data;
@@ -82,7 +84,7 @@ async function renderOptionalFeatureDetail(container) {
     const id = window.location.pathname.split('/').pop();
     container.innerHTML = '<div id="optionalfeature-detail">Loading…</div>';
     try {
-        const res = await fetch(`http://localhost:8000/optional-features/${id}`);
+        const res = await fetch(BACKEND_URL + `/optional-features/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

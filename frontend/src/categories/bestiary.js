@@ -1,9 +1,11 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, capitalizeCommaSeparated } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, capitalizeCommaSeparated, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 async function renderBestiaryList(container) {
     container.innerHTML = await loadTemplate('bestiary');
     try {
-        const response = await fetch('http://localhost:8000/bestiary/search');
+        const response = await fetch(BACKEND_URL + '/bestiary/search');
         const bestiary = await response.json();
 
         const tbody = document.querySelector('#bestiary-table tbody');
@@ -38,7 +40,7 @@ async function renderBestiaryDetail(container) {
     <div id="bestiary-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/bestiary/${id}`);
+        const res = await fetch(BACKEND_URL + `/bestiary/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
@@ -260,7 +262,7 @@ function renderBestiaryDescription(entry) {
             async function resetBestiaryContent() {
                 const id = window.location.pathname.split('/').pop();
                 try {
-                    const res = await fetch(`http://localhost:8000/bestiary/${id}`);
+                    const res = await fetch(BACKEND_URL + `/bestiary/${id}`);
                     if (!res.ok) throw new Error('Not found');
                     const item = await res.json();
                     const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
@@ -703,7 +705,7 @@ function renderBestiaryDescription(entry) {
             async function resetBestiaryContent() {
                 const id = window.location.pathname.split('/').pop();
                 try {
-                    const res = await fetch(`http://localhost:8000/bestiary/${id}`);
+                    const res = await fetch(BACKEND_URL + `/bestiary/${id}`);
                     if (!res.ok) throw new Error('Not found');
                     const item = await res.json();
                     const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');

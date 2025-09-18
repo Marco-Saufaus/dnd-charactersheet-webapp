@@ -1,9 +1,11 @@
-import { loadTemplate } from '../utils.js';
+import { loadTemplate, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 async function renderCharacterList(container) {
     container.innerHTML = await loadTemplate('characters');
     try {
-        const response = await fetch('http://localhost:8000/characters/');
+        const response = await fetch(BACKEND_URL + '/characters/');
         const characters = await response.json();
 
         const tbody = document.querySelector('#characters-table tbody');

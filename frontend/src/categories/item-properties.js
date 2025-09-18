@@ -1,9 +1,11 @@
-import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries } from '../utils.js';
+import { loadTemplate, formatSourceWithPage, escapeHtml, renderEntries, getBackend } from '../utils.js';
+
+const BACKEND_URL = getBackend();
 
 async function renderItemPropertiesList(container) {
     container.innerHTML = await loadTemplate('item-properties');
     try {
-        const response = await fetch('http://localhost:8000/item-properties/search');
+        const response = await fetch(BACKEND_URL + '/item-properties/search');
         const properties = await response.json();
 
         const tbody = document.querySelector('#properties-table tbody');
@@ -38,7 +40,7 @@ async function renderItemPropertyDetail(container) {
     <div id="item-property-detail">Loading…</div>
   `;
     try {
-        const res = await fetch(`http://localhost:8000/item-properties/${id}`);
+        const res = await fetch(BACKEND_URL + `/item-properties/${id}`);
         if (!res.ok) throw new Error('Not found');
         const item = await res.json();
         const displaySource = item.source === 'XPHB' ? 'PHB24' : (item.source ?? '');
