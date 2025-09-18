@@ -3,7 +3,7 @@ import os
 from dnd_backend.config.database import MongoManager
 
 COLLECTION_NAME = "languages"
-LANGUAGES_JSON_PATH = f"{os.getcwd()}/../data/5etools-v2.10.2/data/languages.json"
+LANGUAGES_JSON_PATH = f"{os.getenv("DND_DATA_PATH")}/languages.json"
 
 def matches_criteria(language):
     source = language.get("source")

@@ -3,7 +3,7 @@ import os
 from dnd_backend.config.database import MongoManager
 
 COLLECTION_NAME = "feats"
-FEATS_JSON_PATH = f"{os.getcwd()}/../data/5etools-v2.10.2/data/feats.json"
+FEATS_JSON_PATH = f"{os.getenv("DND_DATA_PATH")}/feats.json"
 
 def matches_criteria(feat):
     source = feat.get("source")

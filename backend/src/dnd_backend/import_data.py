@@ -1,4 +1,4 @@
-import asyncio
+import asyncio, os
 from dnd_backend.config.database import MongoManager
 from dnd_backend.imports.actions_import import import_actions
 from dnd_backend.imports.backgrounds_import import import_backgrounds
@@ -19,7 +19,7 @@ from dnd_backend.imports.spells_import import import_spells
 from dnd_backend.imports.status_import import import_status
 from dnd_backend.imports.variants_import import import_variants
 
-
+os.environ["DND_DATA_PATH"] = os.getenv("DND_DATA_PATH", f"{os.getcwd()}/../data/5etools-v2.10.2/data")
 
 async def _run_import_tasks() -> dict:
     """Run all import tasks concurrently and collect their return values.

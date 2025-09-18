@@ -3,7 +3,7 @@ import os
 from dnd_backend.config.database import MongoManager
 
 COLLECTION_NAME = "senses"
-SENSES_JSON_PATH = f"{os.getcwd()}/../data/5etools-v2.10.2/data/senses.json"
+SENSES_JSON_PATH = f"{os.getenv("DND_DATA_PATH")}/senses.json"
 
 def matches_criteria(sense):
     source = sense.get("source")

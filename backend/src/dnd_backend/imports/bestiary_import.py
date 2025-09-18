@@ -3,7 +3,7 @@ import os
 from dnd_backend.config.database import MongoManager
 
 COLLECTION_NAME: str = "bestiary"
-BESTIARY_JSON_PATH: str = f"{os.getcwd()}/../data/5etools-v2.10.2/data/bestiary/bestiary-xphb.json"
+BESTIARY_JSON_PATH: str = f"{os.getenv("DND_DATA_PATH")}/bestiary/bestiary-xphb.json"
 
 def matches_criteria(bestiary: dict) -> bool:
     source: str = bestiary.get("source")

@@ -3,7 +3,7 @@ import os
 from dnd_backend.config.database import MongoManager
 
 COLLECTION_NAME = "variants"
-VARIANTS_JSON_PATH = f"{os.getcwd()}/../data/5etools-v2.10.2/data/variantrules.json"
+VARIANTS_JSON_PATH = f"{os.getenv("DND_DATA_PATH")}/variantrules.json"
 
 def matches_criteria(variant):
     source = variant.get("source")

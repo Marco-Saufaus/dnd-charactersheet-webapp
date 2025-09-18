@@ -35,12 +35,19 @@ COPY --from=builder /app/.venv /app/.venv
 # Copy the source code as well (needed for the module to be found)
 COPY --from=builder /app/src /app/src
 
+# Copy entrypoint script
+COPY docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
 # Activate virtual environment
 ENV PATH="/app/.venv/bin:$PATH"
 ENV PYTHONPATH="/app/src:$PYTHONPATH"
 
 # Expose port
 EXPOSE 8000
+
+# Set entrypoint
+ENTRYPOINT ["docker-entrypoint.sh"]
 
 # Default command
 CMD ["uvicorn", "dnd_backend.router:app", "--host", "0.0.0.0", "--port", "8000"]

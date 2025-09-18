@@ -1,6 +1,18 @@
 version: '3.8'
 
 services:
+  # MongoDB database
+  mongodb:
+    image: mongo:7.0
+    container_name: dnd-mongodb
+    ports:
+      - "28017:27017"
+    environment:
+      - MONGO_INITDB_DATABASE=dnd_character_db
+    volumes:
+      - mongodb_data:/data/db
+    restart: unless-stopped
+
   # Backend service
   backend:
     image: punked/dnd-charactersheetapp-backend:latest
@@ -8,8 +20,13 @@ services:
     container_name: dnd-backend
     ports:
       - "8000:8000"
+    depends_on:
+      - mongodb
+    volumes:
+      - ./data/5etools-v2.10.2/data:/app/data:ro
     environment:
-      - MONGODB_URL="mongodb://docker.host.internal:27017"
+      - MONGODB_URL=mongodb://mongodb:27017
+      - DND_DATA_PATH=/app/data
 
   # Frontend service
   frontend:
@@ -22,3 +39,7 @@ services:
       - backend
     environment:
       - API_BASE_URL=http://localhost:8000
+
+# Volumes for data persistence
+volumes:
+  mongodb_data:

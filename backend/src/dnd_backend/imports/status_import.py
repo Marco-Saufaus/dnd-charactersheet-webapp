@@ -3,7 +3,7 @@ import os
 from dnd_backend.config.database import MongoManager
 
 COLLECTION_NAME = "conditions"
-STATUS_JSON_PATH = f"{os.getcwd()}/../data/5etools-v2.10.2/data/conditionsdiseases.json"
+STATUS_JSON_PATH = f"{os.getenv("DND_DATA_PATH")}/conditionsdiseases.json"
 
 def matches_criteria(condition):
     source = condition.get("source")

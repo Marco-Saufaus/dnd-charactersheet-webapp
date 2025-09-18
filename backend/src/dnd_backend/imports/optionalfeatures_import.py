@@ -3,7 +3,7 @@ import os
 from dnd_backend.config.database import MongoManager
 
 COLLECTION_NAME = "optionalfeatures"
-OPTIONALFEATURES_JSON_PATH = f"{os.getcwd()}/../data/5etools-v2.10.2/data/optionalfeatures.json"
+OPTIONALFEATURES_JSON_PATH = f"{os.getenv("DND_DATA_PATH")}/optionalfeatures.json"
 
 def matches_criteria(optionalfeature):
     source = optionalfeature.get("source")
