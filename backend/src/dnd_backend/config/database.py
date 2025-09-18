@@ -1,8 +1,9 @@
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo.database import Database
 from typing import Any, Iterable
+import os
 
-MONGODB_URL = "mongodb://localhost:27017"
+MONGODB_URL = os.getenv("MONGODB_URL", "mongodb://localhost:27017")
 DATABASE_NAME = "dnd_character_db"
 
 class MongoManager:

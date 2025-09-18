@@ -2,32 +2,23 @@ version: '3.8'
 
 services:
   # Backend service
-  # backend:
-  #   build: ./backend
-  #   container_name: dnd-backend
-  #   ports:
-  #     - "8000:8000"
-  #   networks:
-  #     - dnd-network
-  #   # Add your backend environment variables here
-  #   environment:
-  #     - NODE_ENV=production
-  #     # Add database connections, etc.
+  backend:
+    image: punked/dnd-charactersheetapp-backend:latest
+    build: ./backend
+    container_name: dnd-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - MONGODB_URL="mongodb://docker.host.internal:27017"
 
   # Frontend service
   frontend:
+    image: punked/dnd-charactersheetapp-frontend:latest
     build: ./frontend
     container_name: dnd-frontend
     ports:
       - "80:80"
-    # depends_on:
-    #   - backend
-    # networks:
-    #   - dnd-network
+    depends_on:
+      - backend
     environment:
-      # Runtime configuration - can be changed without rebuild!
       - API_BASE_URL=http://localhost:8000
-
-# networks:
-#   dnd-network:
-#     driver: bridge
