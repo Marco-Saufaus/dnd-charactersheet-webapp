@@ -1,0 +1,76 @@
+flowchart TB
+    subgraph "Docker Compose Environment"
+        subgraph "MongoDB Service"
+            MongoDB[("MongoDB 7.0<br/>Container: dnd-mongodb<br/>Port: 28017:27017")]
+            MongoData[("Volume:<br/>mongodb_data")]
+            MongoDB --- MongoData
+        end
+        
+        subgraph "Backend Service"
+            BackendImg["Image:<br/>punked/dnd-charactersheetapp-backend:0.1.0"]
+            BackendContainer["Container: dnd-backend<br/>Port: 8000:8000"]
+            BackendDockerfile["Backend Dockerfile<br/>(Multi-stage build)"]
+            BackendEntrypoint["docker-entrypoint.sh<br/>- Wait for MongoDB<br/>- Run data import<br/>- Start FastAPI server"]
+            
+            BackendImg --> BackendContainer
+            BackendDockerfile --> BackendImg
+            BackendContainer --> BackendEntrypoint
+        end
+        
+        subgraph "Frontend Service"
+            FrontendImg["Image:<br/>punked/dnd-charactersheetapp-frontend:0.1.0"]
+            FrontendContainer["Container: dnd-frontend<br/>Port: 80:80"]
+            FrontendDockerfile["Frontend Dockerfile<br/>(Multi-stage build)"]
+            FrontendCaddy["Caddyfile<br/>- Serve static files<br/>- SPA routing support"]
+            
+            FrontendImg --> FrontendContainer
+            FrontendDockerfile --> FrontendImg
+            FrontendContainer --> FrontendCaddy
+        end
+    end
+    
+    subgraph "Build Context & Volumes"
+        BackendBuild["./backend/<br/>- Dockerfile<br/>- docker-entrypoint.sh<br/>- pyproject.toml<br/>- src/"]
+        FrontendBuild["./frontend/<br/>- Dockerfile<br/>- Caddyfile<br/>- package.json<br/>- src/"]
+        DataVolume["./data/5etools-v2.10.2/data<br/>(Read-only mount)"]
+        
+        BackendBuild --> BackendDockerfile
+        FrontendBuild --> FrontendDockerfile
+        DataVolume --> BackendContainer
+    end
+    
+    subgraph "Environment Variables"
+        BackendEnv["Backend Environment:<br/>- MONGODB_URL=mongodb://mongodb:27017<br/>- DND_DATA_PATH=/app/data"]
+        FrontendEnv["Frontend Environment:<br/>- API_BASE_URL=http://localhost:8000"]
+        MongoEnv["MongoDB Environment:<br/>- MONGO_INITDB_DATABASE=dnd_character_db"]
+        
+        BackendEnv --> BackendContainer
+        FrontendEnv --> FrontendContainer
+        MongoEnv --> MongoDB
+    end
+    
+    subgraph "Service Dependencies"
+        BackendContainer -->|depends_on| MongoDB
+        FrontendContainer -->|depends_on| BackendContainer
+    end
+    
+    subgraph "Network Communication"
+        MongoDB -->|Internal: mongodb:27017| BackendContainer
+        BackendContainer -->|External: localhost:8000| FrontendContainer
+    end
+    
+    External["External Access:<br/>Frontend: http://localhost<br/>Backend: http://localhost:8000<br/>MongoDB: localhost:28017"]
+    
+    FrontendContainer --> External
+    BackendContainer --> External
+    MongoDB --> External
+    
+    classDef containerBox fill:#e1f5fe,stroke:#01579b,stroke-width:2px
+    classDef envBox fill:#f3e5f5,stroke:#4a148c,stroke-width:2px
+    classDef volumeBox fill:#e8f5e8,stroke:#1b5e20,stroke-width:2px
+    classDef serviceBox fill:#fff3e0,stroke:#e65100,stroke-width:2px
+    
+    class BackendContainer,FrontendContainer,MongoDB containerBox
+    class BackendEnv,FrontendEnv,MongoEnv envBox
+    class MongoData,DataVolume volumeBox
+    class BackendImg,FrontendImg serviceBox
