@@ -2,11 +2,11 @@
 # Stage 1: Build (Poetry)
 #############################
 
-FROM python:3.13-slim as builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml ./
 
 RUN pip install poetry 
 
@@ -24,7 +24,7 @@ RUN poetry install --only main
 # Stage 2: Runtime (static serving)
 #############################
 
-FROM python:3.13-slim as production
+FROM python:3.13-slim AS production
 
 # Set work directory
 WORKDIR /app
@@ -36,12 +36,11 @@ COPY --from=builder /app/.venv /app/.venv
 COPY --from=builder /app/src /app/src
 
 # Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
 # Activate virtual environment
 ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app/src:$PYTHONPATH"
 
 # Expose port
 EXPOSE 8000
