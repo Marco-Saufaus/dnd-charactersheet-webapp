@@ -1,0 +1,9 @@
+# Exclude VCS
+.git
+.gitignore
+
+# Python caches
+**/__pycache__/
+
+# Virtual environments
+.venv/
