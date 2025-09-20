@@ -1,53 +1,49 @@
 #############################
-# Stage 1: Build (Poetry)
+# Stage 1: Build (Poetry) + Wheel
 #############################
 
-FROM python:3.13-slim as builder
+FROM python:3.13-slim AS builder
 
 WORKDIR /app
 
-COPY pyproject.toml poetry.lock ./
+COPY pyproject.toml ./
 
-RUN pip install poetry 
+RUN pip install poetry
 
-# Force Poetry to create virtual environment in project directory
-ENV POETRY_VIRTUALENVS_IN_PROJECT=1 
+# Keep original approach (virtualenv in project) for minimal change intent
+ENV POETRY_VIRTUALENVS_IN_PROJECT=1
 
-RUN poetry install --only main --no-root --no-directory
+# Install dependencies (no project package yet)
+RUN poetry install --only main --no-root || true
 
+# Copy source
 COPY src/ ./src
 
-# Install the package in editable mode to ensure it's importable
-RUN poetry install --only main
+# (Re)install including project (matches original behavior) then build wheel
+RUN poetry install --only main 
+RUN poetry build -f wheel
 
 #############################
-# Stage 2: Runtime (static serving)
+# Stage 2: Runtime (wheel install) with non-root user
 #############################
 
-FROM python:3.13-slim as production
+FROM python:3.13-slim AS production
 
-# Set work directory
 WORKDIR /app
 
-# Copy virtual environment from builder stage
-COPY --from=builder /app/.venv /app/.venv
-
-# Copy the source code as well (needed for the module to be found)
-COPY --from=builder /app/src /app/src
+# Copy built wheel from builder and install it (brings deps + package)
+COPY --from=builder /app/dist/*.whl /tmp/
+RUN pip install /tmp/*.whl && rm /tmp/*.whl
 
 # Copy entrypoint script
-COPY docker-entrypoint.sh /usr/local/bin/
+COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Activate virtual environment
-ENV PATH="/app/.venv/bin:$PATH"
-ENV PYTHONPATH="/app/src:$PYTHONPATH"
+# Create minimal non-root user and assign ownership of workdir
+RUN useradd -r app && chown -R app:app /app
+USER app
 
-# Expose port
 EXPOSE 8000
 
-# Set entrypoint
 ENTRYPOINT ["docker-entrypoint.sh"]
-
-# Default command
 CMD ["uvicorn", "dnd_backend.router:app", "--host", "0.0.0.0", "--port", "8000"]
