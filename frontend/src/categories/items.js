@@ -6,6 +6,7 @@ const ITEM_CATEGORY_DISPLAY_TO_BACKEND = {
     "general-items": "general",
     "weapons": "weapons",
     "armor": "armor",
+    "class-features": "class-features",
     "vehicles": "vehicles",
     "mounts": "mounts",
     "spellcasting-focus": "focus",
@@ -21,6 +22,7 @@ function backendToDisplayItemCategory(slug) {
         case 'general': return 'general-items';
         case 'weapons': return 'weapons';
         case 'armor': return 'armor';
+        case 'class-features': return 'class-features';
         case 'vehicles': return 'vehicles';
         case 'mounts': return 'mounts';
         case 'focus': return 'spellcasting-focus';
@@ -302,14 +304,28 @@ async function renderItemDetail(container) {
                 }
             }
 
-            // Mastery (2024): array of like "Topple|XPHB"
+            // Mastery (2024): array of like "Topple|XPHB" or objects with uid field
             const mastery = Array.isArray(item.mastery) ? item.mastery : [];
             const masteryNames = mastery
-                .map(m => String(m))
+                .map(m => {
+                    if (typeof m === 'string') return m;
+                    if (typeof m === 'object' && m && m.uid) return m.uid;
+                    return String(m);
+                })
                 .map(m => (m.includes('|') ? m.split('|', 1)[0] : m))
                 .filter(Boolean);
             if (masteryNames.length) {
-                lines.push('Mastery: ' + masteryNames.map(m => `<a href="/item-masteries/${encodeURIComponent(m)}" data-link>${escapeHtml(m)}</a>`).join(', '));
+                let masteryLine = 'Mastery: ' + masteryNames.map(m => `<a href="/item-masteries/${encodeURIComponent(m)}" data-link>${escapeHtml(m)}</a>`).join(', ');
+                
+                // Add any mastery notes from object format
+                const masteryNotes = mastery
+                    .filter(m => typeof m === 'object' && m && m.note)
+                    .map(m => m.note);
+                if (masteryNotes.length > 0) {
+                    masteryLine += '<br><em style="font-size: 0.9em;">Note: ' + escapeHtml(masteryNotes.join('; ')) + '</em>';
+                }
+                
+                lines.push(masteryLine);
             }
 
             if (!lines.length) return '';
@@ -329,7 +345,11 @@ async function renderItemDetail(container) {
             const unique = (arr) => Array.from(new Set(arr));
             const propNames = unique(propCodes.map(propertyNameFromCode).filter(Boolean));
 
-            const masteryRaw = Array.isArray(item.mastery) ? item.mastery.map(m => String(m)) : [];
+            const masteryRaw = Array.isArray(item.mastery) ? item.mastery.map(m => {
+                if (typeof m === 'string') return m;
+                if (typeof m === 'object' && m && m.uid) return m.uid;
+                return String(m);
+            }) : [];
             const masteryNames = unique(masteryRaw.map(m => (m.includes('|') ? m.split('|', 1)[0] : m).trim()).filter(Boolean));
 
             const fetchSafe = async (url) => {
