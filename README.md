@@ -77,7 +77,16 @@ Access the application at:
 - Manage characters via the Characters page
 - All D&D 5e data is automatically imported and searchable
 
+## Releasing
+
+1. Update the container image tags in `docker-compose.yml` to the desired semantic version (for example `0.2.0`).
+2. Commit the change to your main branch.
+3. From the **Actions** tab, run the **Release** workflow. Optionally provide a different git ref if you need to release from a branch or commit other than the current default.
+4. The workflow will:
+   - Validate that both backend and frontend images share the same version tag.
+   - Build and publish Docker images to GitHub Container Registry with the new version and the `latest` tag.
+   - Create and push a git tag (`vX.Y.Z`).
+   - Create a GitHub Release with auto-generated notes.
+
 ## License
 MIT
-
-

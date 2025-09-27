@@ -13,7 +13,7 @@ services:
 
   # Backend service
   backend:
-    image: punked/dnd-charactersheetapp-backend:0.1.0
+    image: ghcr.io/Marco-Saufaus/dnd-charactersheetapp-backend:0.2.0
     build: ./backend
     container_name: dnd-backend
     ports:
@@ -28,7 +28,7 @@ services:
 
   # Frontend service
   frontend:
-    image: punked/dnd-charactersheetapp-frontend:0.1.0
+    image: ghcr.io/Marco-Saufaus/dnd-charactersheetapp-frontend:0.2.0
     build: ./frontend
     container_name: dnd-frontend
     ports:
