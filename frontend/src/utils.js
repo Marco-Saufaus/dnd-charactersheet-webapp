@@ -73,6 +73,40 @@ function renderEntries(entries, suppressSpellName = false) {
             }).join('')}</ul>`;
         }
 
+        if (it.type === 'table') {
+            const caption = it.caption ? `<caption>${escapeHtml(it.caption)}</caption>` : '';
+            const colLabels = Array.isArray(it.colLabels) ? it.colLabels : [];
+            const colStyles = Array.isArray(it.colStyles) ? it.colStyles : [];
+            const rows = Array.isArray(it.rows) ? it.rows : [];
+            
+            // Generate table header
+            let headerHtml = '';
+            if (colLabels.length > 0) {
+                headerHtml = '<thead><tr>';
+                colLabels.forEach((label, idx) => {
+                    const style = colStyles[idx] ? ` class="${escapeHtml(colStyles[idx])}"` : '';
+                    headerHtml += `<th${style}>${formatInlineRefs(label)}</th>`;
+                });
+                headerHtml += '</tr></thead>';
+            }
+            
+            // Generate table body
+            let bodyHtml = '<tbody>';
+            rows.forEach(row => {
+                if (!Array.isArray(row)) return;
+                bodyHtml += '<tr>';
+                row.forEach((cell, idx) => {
+                    const style = colStyles[idx] ? ` class="${escapeHtml(colStyles[idx])}"` : '';
+                    const cellContent = typeof cell === 'string' ? formatInlineRefs(cell) : escapeHtml(String(cell || ''));
+                    bodyHtml += `<td${style}>${cellContent}</td>`;
+                });
+                bodyHtml += '</tr>';
+            });
+            bodyHtml += '</tbody>';
+            
+            return `<div class="class-progression-table feature-table"><table class="table table-striped">${caption}${headerHtml}${bodyHtml}</table></div>`;
+        }
+
         return '';
     };
 
@@ -81,10 +115,9 @@ function renderEntries(entries, suppressSpellName = false) {
 
 function formatInlineRefs(str) {
     if (!str || typeof str !== 'string') return '';
-    // Regex captures: type, inner content up to closing }
-    // We then split inner content by '|' (first segment is display/name)
-    // Also match tags with no argument, e.g. {@actSaveFail}
-    const refRegex = /\{@([a-zA-Z]+)(?:\s+([^}]+))?}/g;
+    // Regex captures: type (letters or digits), inner content up to closing }
+    // This now supports tags like {@5etools feat|feats.html}
+    const refRegex = /\{@([a-zA-Z0-9]+)(?:\s+([^}]+))?}/g;
     let replaced = str.replace(refRegex, (_m, typeRaw, inner) => {
         const type = typeRaw.toLowerCase().trim();
         const parts = (inner || '').split('|').map(p => p.trim());
@@ -126,6 +159,15 @@ function formatInlineRefs(str) {
             return escapeHtml(display);
         }
 
+        // Inline italic formatting: {@i flavor text}
+        if (type === 'i') {
+            return `<em>${escapeHtml(display)}</em>`;
+        }
+        // Inline bold formatting (common in 5etools): {@b important text}
+        if (type === 'b') {
+            return `<strong>${escapeHtml(display)}</strong>`;
+        }
+
         // Special cases with plain-text formatting (no links)
         if (type === 'dc') {
             // e.g., "{@dc 15}" -> "DC15"
@@ -143,6 +185,67 @@ function formatInlineRefs(str) {
         if (type === 'itemproperty') {
             const fullName = propertyNameFromCode(display) || display;
             display = fullName;
+        }
+
+        // Special-case: generic feats listing reference from 5etools root tag
+        if (type === '5etools' && display.toLowerCase() === 'feat') {
+            return '<a href="/feats/general-feats" data-link title="Feat">Feat</a>';
+        }
+
+        // Special-case: Epic Boon category filter. Input tag: {@filter Epic Boon feat|feats|category=EB}
+
+        if (type === 'filter') {
+            const dl = display.toLowerCase();
+            // Epic boon special case
+            if (dl === 'epic boon feat' || dl === 'epic boon') {
+                return '<a href="/feats/epic-boons" data-link title="Epic Boon">Epic Boon feat</a>';
+            }
+            // Generic spell filter of form: {@filter Cantrips|spells|level=0|class=Wizard}
+            const category = (parts[1] || '').toLowerCase();
+            if (category === 'spells') {
+                const params = parts.slice(2);
+                const paramMap = {};
+                params.forEach(p => {
+                    const [k, v] = p.split('=');
+                    if (k && v) paramMap[k.trim().toLowerCase()] = v.trim();
+                });
+                if (paramMap.level != null) {
+                    // Direct class based filter
+                    if (paramMap.class) {
+                        const level = encodeURIComponent(paramMap.level);
+                        const cls = encodeURIComponent(paramMap.class.toLowerCase());
+                        const href = `/spells/${cls}/${level}`;
+                        return `<a href="${href}" data-link title="${escapeHtml(display)}">${escapeHtml(display)}</a>`;
+                    }
+                    // Subclass based filter (e.g., subclass=Rogue: Arcane Trickster). Map certain subclasses to their spell list class.
+                    if (paramMap.subclass) {
+                        // Extract the part after ':' (if any) as the subclass name
+                        const rawSubclass = paramMap.subclass.split(':').slice(-1)[0].trim().toLowerCase();
+                        const SUBCLASS_BASE_CLASS = {
+                            'arcane trickster': 'wizard',
+                            'eldritch knight': 'wizard'
+                        };
+                        const base = SUBCLASS_BASE_CLASS[rawSubclass];
+                        if (base) {
+                            const level = encodeURIComponent(paramMap.level);
+                            const href = `/spells/${encodeURIComponent(base)}/${level}`;
+                            return `<a href="${href}" data-link title="${escapeHtml(display)}">${escapeHtml(display)}</a>`;
+                        }
+                    }
+                }
+            }
+            // Fall through: if not recognized, continue normal handling below
+        }
+
+        if (type === 'variantrule' && parts.length >= 3 && parts[2]) {
+            display = parts[2];
+            const dl = display.toLowerCase();
+            if (dl === 'short' || dl === 'short rest') {
+                return '<a href="/variant-rules/short rest" data-link title="Short">Short</a>';
+            }
+            if (dl === 'proficiency bonus' || dl === 'proficiency bonus') {
+                return '<a href="/variant-rules/proficiency" data-link title="Proficiency Bonus">Proficiency Bonus</a>';
+            }
         }
 
         const routeBase = resolveRefRouteBase(type);
