@@ -1,6 +1,7 @@
 import { renderActionsList, renderActionDetail } from './categories/actions.js';
 import { renderBackgroundsList, renderBackgroundDetail } from './categories/backgrounds.js';
 import { renderBestiaryList, renderBestiaryDetail } from './categories/bestiary.js';
+import { renderClassList, renderClassDetail } from './categories/classes.js';
 import { renderConditionsList, renderConditionDetail } from './categories/conditions.js';
 import { handleFeatsRoute } from './categories/feats.js';
 import { handleItemsRoute } from './categories/items.js';
@@ -42,7 +43,12 @@ function router() {
     } else if (path === '/bestiary') {
         renderBestiaryList(container);
     } else if (path.startsWith('/bestiary/')) {
-        renderBestiaryDetail(container);    
+        renderBestiaryDetail(container);
+        
+    } else if (path === '/classes') {
+        renderClassList(container);
+    } else if (path.startsWith('/classes/')) {
+        renderClassDetail(container);
 
     } else if (path === '/conditions') {
         renderConditionsList(container);
