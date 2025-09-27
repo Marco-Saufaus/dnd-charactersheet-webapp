@@ -6,6 +6,7 @@ from dnd_backend.routers.actions_router import router as actions_router
 from dnd_backend.routers.backgrounds_router import router as backgrounds_router
 from dnd_backend.routers.bestiary_router import router as bestiary_router
 from dnd_backend.routers.characters_router import router as characters_router
+from dnd_backend.routers.classes_router import router as classes_router
 from dnd_backend.routers.conditions_router import router as conditions_router
 from dnd_backend.routers.feats_router import router as feats_router
 from dnd_backend.routers.baseitems_router import router as baseitem_router
@@ -55,6 +56,7 @@ app.include_router(actions_router)
 app.include_router(backgrounds_router)
 app.include_router(bestiary_router)
 app.include_router(characters_router)
+app.include_router(classes_router)
 app.include_router(conditions_router)
 app.include_router(feats_router)
 app.include_router(items_router)

@@ -1,8 +1,12 @@
 import asyncio, os
+
+os.environ["DND_DATA_PATH"] = os.getenv("DND_DATA_PATH", f"{os.getcwd()}/../data/5etools-v2.10.2/data")
+
 from dnd_backend.config.database import MongoManager
 from dnd_backend.imports.actions_import import import_actions
 from dnd_backend.imports.backgrounds_import import import_backgrounds
 from dnd_backend.imports.bestiary_import import import_bestiary
+from dnd_backend.imports.classes_import import import_classes
 from dnd_backend.imports.conditions_import import import_conditions
 from dnd_backend.imports.feats_import import import_feats
 from dnd_backend.imports.baseitems_import import import_baseitems
@@ -19,8 +23,6 @@ from dnd_backend.imports.spells_import import import_spells
 from dnd_backend.imports.status_import import import_status
 from dnd_backend.imports.variants_import import import_variants
 
-os.environ["DND_DATA_PATH"] = os.getenv("DND_DATA_PATH", f"{os.getcwd()}/../data/5etools-v2.10.2/data")
-
 async def _run_import_tasks() -> dict:
     """Run all import tasks concurrently and collect their return values.
 
@@ -29,10 +31,11 @@ async def _run_import_tasks() -> dict:
     for invocation through the Poetry script entry point, preventing 'coroutine was
     never awaited' runtime warnings.
     """
-    (actions, backgrounds, bestiary, conditions, feats, baseitems, items, masteries, properties, itemgroups, languages, optionalfeatures, races, senses, skills, spells, status, variants,) = await asyncio.gather(
+    (actions, backgrounds, bestiary, classes, conditions, feats, baseitems, items, masteries, properties, itemgroups, languages, optionalfeatures, races, senses, skills, spells, status, variants,) = await asyncio.gather(
         import_actions(),
         import_backgrounds(),
         import_bestiary(),
+        import_classes(),
         import_conditions(),
         import_feats(),
         import_baseitems(),
@@ -54,6 +57,7 @@ async def _run_import_tasks() -> dict:
         "actions": actions,
         "backgrounds": backgrounds,
         "bestiary": bestiary,
+        "classes": classes,
         "conditions": conditions,
         "feats": feats,
         "baseitems": baseitems,
@@ -77,16 +81,6 @@ async def _run_import_tasks() -> dict:
         await MongoManager.overwrite_one("search_index", {"_id": "search_index"}, results)
     finally:
         MongoManager.close_database_connection()
-
-
-def get_conditions():
-    # Return all Status objects from the Conditions collection
-    return []
-
-
-def get_condition_by_name(name: str):
-    # Return a Status object by name from the Conditions collection
-    return None
 
 
 def main() -> dict:

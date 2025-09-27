@@ -14,6 +14,9 @@ CATEGORY_MAP: dict[str, dict] = {
     "weapons": {"codes": ["A|XPHB", "M|XPHB", "R|XPHB"], "label": "Weapons & Ammunition"},
     "armor": {"codes": ["HA|XPHB", "MA|XPHB", "LA|XPHB", "S|XPHB"], "label": "Armor & Shields"},
 
+    # Class feature items (weapons/items with rarity "none" that aren't baseitems)
+    "class-features": {"codes": ["M", "A", "R"], "label": "Class Feature Items"},
+
     # Vehicles and mounts
     "vehicles": {"codes": ["AIR|XPHB", "VEH|XPHB", "SHP|XPHB"], "label": "Vehicles"},
     "mounts": {"codes": ["MNT|XPHB"], "label": "Mounts"},
@@ -39,13 +42,21 @@ def _query_for_category(slug: str, codes: list[str]) -> dict:
     # Default: exact match on 'type' against provided codes
     if slug == "magic":
         # Include magic item types: W, RG, RD, WD, GV, S, HA, MA, LA, M
-        # Match exact type token immediately followed by a pipe (e.g., "RG|XDMG"), avoiding prefix hits like "MNT|XPHB" or "SC|XPHB".
+        # Match exact type token either standalone or followed by a pipe (e.g., "M", "RG|XDMG")
+        # Exclude items with rarity "none" (mundane items like class feature weapons)
         return {"$or": [
-            {"type": {"$regex": r"^(?:W|RG|RD|WD|GV|S|HA|MA|LA|M)(?=\|)", "$options": "i"}},
+            {"type": {"$regex": r"^(?:W|RG|RD|WD|GV|S|HA|MA|LA|M)(\||$)", "$options": "i"}},
             {"type": {"$exists": False}},
             {"type": None},
             {"type": ""},
-        ]}
+        ], "rarity": {"$ne": "none"}}
+    elif slug == "class-features":
+        # Class feature items: weapons/armor/ranged with rarity "none" that aren't from baseitems
+        return {
+            "type": {"$regex": r"^(?:M|A|R)(\||$)", "$options": "i"},
+            "rarity": "none",
+            "origin": {"$ne": "baseitems"}
+        }
     return {"type": {"$in": codes}}
 
 def _serialize(doc: dict) -> dict:
@@ -83,6 +94,7 @@ async def list_categories():
             query = {"$and": [query, {"origin": "baseitems"}]}
         elif slug == "magic":
             query = {"$and": [query, {"origin": {"$ne": "baseitems"}}]}
+        # class-features category already has the right filtering in _query_for_category
         count = await MongoManager.db.items.count_documents(query)
         # Keep "code" field for backward compatibility when there is only one; also add "codes" consistently.
         payload = {
@@ -106,11 +118,12 @@ async def get_category(slug: str):
     items: list[dict] = []
     # Build category query
     q = _query_for_category(slug.lower(), codes)
-    # Special case: weapons/armor show only baseitems; magic excludes baseitems
+    # Special case: weapons/armor show only baseitems; magic excludes baseitems; class-features are handled by query
     if slug.lower() in {"weapons", "armor"}:
         q = {"$and": [q, {"origin": "baseitems"}]}
     elif slug.lower() == "magic":
         q = {"$and": [q, {"origin": {"$ne": "baseitems"}}]}
+    # class-features category already has the right filtering in _query_for_category
     cursor = MongoManager.db.items.find(q)
     
     async for doc in cursor:
