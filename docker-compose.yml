@@ -13,7 +13,7 @@ services:
 
   # Backend service
   backend:
-    image: ghcr.io/marco-saufaus/dnd-charactersheetapp-backend:0.2.0
+    image: ghcr.io/marco-saufaus/dnd-charactersheetapp-backend:0.2.1
     build: ./backend
     container_name: dnd-backend
     user: "1000:1000"
@@ -29,7 +29,7 @@ services:
 
   # Frontend service
   frontend:
-    image: ghcr.io/marco-saufaus/dnd-charactersheetapp-frontend:0.2.0
+    image: ghcr.io/marco-saufaus/dnd-charactersheetapp-frontend:0.2.1
     build: ./frontend
     container_name: dnd-frontend
     user: "1000:1000"
