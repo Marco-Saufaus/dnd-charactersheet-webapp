@@ -39,8 +39,8 @@ RUN pip install /tmp/*.whl && rm /tmp/*.whl
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
 
-# Create minimal non-root user and assign ownership of workdir
-RUN useradd -r app && chown -R app:app /app
+# Create non-root user with UID 1000 to match docker-compose user directive
+RUN useradd -r -u 1000 app && chown -R app:app /app
 USER app
 
 EXPOSE 8000

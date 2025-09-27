@@ -22,6 +22,9 @@ RUN npm run build
 #############################
 FROM caddy:2-alpine AS runtime
 
+# Create user with UID 1000 to match docker-compose user directive
+RUN adduser -D -u 1000 app
+
 # Copy compiled assets only
 COPY --from=build /app/dist /usr/share/caddy
 
@@ -31,6 +34,9 @@ COPY Caddyfile /etc/caddy/Caddyfile
 # Copy the runtime configuration script
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+
+# Change ownership of necessary files to the app user
+RUN chown -R app:app /usr/share/caddy /usr/local/bin/docker-entrypoint.sh
 
 EXPOSE 80
 
